@@ -15,19 +15,20 @@ auto = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(auto)
 
 
-def result_zip(path, digest="correct", device="cuda"):
+def result_zip(path, digest="correct", device="cuda", prefix="artifacts/"):
     # Minimal simulated worker outputs test orchestration, not model accuracy.
     metadata = {"dataset_sha256": digest}
     with zipfile.ZipFile(path, "w") as archive:
-        archive.writestr("artifacts/model.json", json.dumps(dict(dataset_metadata=metadata, layers=[{}], model_version="fixture")))
-        archive.writestr("artifacts/metrics.json", json.dumps(dict(dataset_metadata=metadata, device=device, best_epoch=2, metrics={"test": {}})))
-        archive.writestr("artifacts/evaluation_predictions.csv", "target_power,predicted_power\n0.1,0.2\n")
+        archive.writestr(prefix + "model.json", json.dumps(dict(dataset_metadata=metadata, layers=[{}], model_version="fixture")))
+        archive.writestr(prefix + "metrics.json", json.dumps(dict(dataset_metadata=metadata, device=device, best_epoch=2, metrics={"test": {}})))
+        archive.writestr(prefix + "evaluation_predictions.csv", "target_power,predicted_power\n0.1,0.2\n")
         archive.writestr("../../escape.txt", "must never be extracted")
 
 
-def test_result_verification_rejects_wrong_dataset_and_cpu(tmp_path):
+@pytest.mark.parametrize("prefix", ["", "artifacts/"])
+def test_result_verification_rejects_wrong_dataset_and_cpu(tmp_path, prefix):
     path = tmp_path / "results.zip"
-    result_zip(path)
+    result_zip(path, prefix=prefix)
     with pytest.raises(ValueError, match="different dataset"):
         auto.verify_results(path, "wrong")
     files, _, _ = auto.verify_results(path, "correct")

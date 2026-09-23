@@ -25,7 +25,10 @@ def remote_status(text):
 def verify_results(archive_path, dataset_sha):
     """Read only the three expected members; never extract arbitrary ZIP paths."""
     with zipfile.ZipFile(archive_path) as archive:
-        names = ["artifacts/model.json", "artifacts/metrics.json", "artifacts/evaluation_predictions.csv"]
+        required = ["model.json", "metrics.json", "evaluation_predictions.csv"]
+        # Python's zipfile CLI flattens individually supplied paths. Also accept
+        # archives made by passing the artifacts directory as a whole.
+        names = required if all(name in archive.namelist() for name in required) else ["artifacts/" + name for name in required]
         if any(archive.getinfo(name).file_size > 50_000_000 for name in names):
             raise ValueError("Unexpectedly large result file")
         files = {name.split("/")[-1]: archive.read(name) for name in names}
