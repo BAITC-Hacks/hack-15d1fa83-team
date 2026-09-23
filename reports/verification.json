@@ -9,13 +9,15 @@
   "brev_cloud_submission": "User executed a successful three-epoch run on Brev H200; job 9369ddfa5d60, exit code 0 in supplied terminal log",
   "full_model_training": "Brev CUDA run b0f5bbe961ca completed; early stopping after 35 epochs, best checkpoint epoch 25",
   "gpu_training_validation": "Downloaded model mlp-4163decdcbe5 independently verified against 1478 exported January predictions (739 target hours); MAE 0.1860028065",
-  "automation_validation": "Turbine-2 live submit, monitor, download and stop succeeded after ZIP-layout fix. Joint-run startup timed out and a later invocation found the old lock. Added OS-released locking, conservative legacy-lock migration and detached startup with bounded CLI waits; local regression checks pass; live WSL recovery pending.",
+  "automation_validation": "Joint controller submit, monitor, download, verification and GPU stop completed. Stopped-to-running detached startup still needs a live check.",
   "container_build_validation": "Not performed",
   "production_model_weights_in_repository": false,
   "joint_dataset_rows": 96900,
   "joint_turbine_hours": 48450,
-  "joint_model_training": "Prepared, not yet executed",
+  "joint_model_training": "CUDA completed, model mlp-76540e5972a6, 28 epochs, best checkpoint 18",
   "gpu_shutdown": "Successful stop recorded in completed turbine-2 launcher receipt",
   "direct_api": "Implemented /v1/predict and /v1/metadata; strict 48-hour contract, authentication, both-ID tiny trained fixture and real downloaded turbine-2 artifact verified",
-  "live_django_integration": "Pending teammate adaptation and deployed endpoint"
+  "live_django_integration": "Pending teammate adaptation and deployed endpoint",
+  "joint_model_verification": "All 2956 January predictions reproduced by CPU inference; both turbine /v1/predict paths verified in-process with real archived weather",
+  "joint_gpu_shutdown": "Successful stop recorded in complete.json for joint job 8cc2bba35c91"
 }
