@@ -1,60 +1,68 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://arys.example/schemas/ml-output.json",
-  "type": "object",
-  "additionalProperties": false,
+  "$defs": {
+    "OutputRecord": {
+      "properties": {
+        "target_time": {
+          "format": "date-time",
+          "title": "Target Time",
+          "type": "string"
+        },
+        "predicted_normalized_power": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Predicted Normalized Power",
+          "type": "number"
+        }
+      },
+      "required": [
+        "target_time",
+        "predicted_normalized_power"
+      ],
+      "title": "OutputRecord",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "schema_version": {
+      "const": "windpower.output.v1",
+      "default": "windpower.output.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "turbine_id": {
+      "title": "Turbine Id",
+      "type": "string"
+    },
+    "weather_model": {
+      "title": "Weather Model",
+      "type": "string"
+    },
+    "model_version": {
+      "title": "Model Version",
+      "type": "string"
+    },
+    "alignment_confirmed": {
+      "title": "Alignment Confirmed",
+      "type": "boolean"
+    },
+    "records": {
+      "items": {
+        "$ref": "#/$defs/OutputRecord"
+      },
+      "maxItems": 48,
+      "minItems": 48,
+      "title": "Records",
+      "type": "array"
+    }
+  },
   "required": [
-    "schema_version",
     "turbine_id",
     "weather_model",
     "model_version",
     "alignment_confirmed",
     "records"
   ],
-  "properties": {
-    "schema_version": {
-      "const": "windpower.output.v1"
-    },
-    "turbine_id": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 64
-    },
-    "weather_model": {
-      "const": "jma_gsm"
-    },
-    "model_version": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 160
-    },
-    "alignment_confirmed": {
-      "type": "boolean"
-    },
-    "records": {
-      "type": "array",
-      "minItems": 48,
-      "maxItems": 48,
-      "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "target_time",
-          "predicted_normalized_power"
-        ],
-        "properties": {
-          "target_time": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Timezone-aware consecutive whole hours; UTC Z preferred."
-          },
-          "predicted_normalized_power": {
-            "type": "number",
-            "minimum": 0,
-            "maximum": 1
-          }
-        }
-      }
-    }
-  }
+  "title": "PredictResponse",
+  "type": "object"
 }

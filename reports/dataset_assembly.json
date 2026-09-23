@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "weather_model": "jma_gsm",
+  "measurement_timezone": "Asia/Almaty",
+  "timestamp_position": "start",
+  "alignment_confirmed": false,
+  "archive_semantics": "provider_fixed_offset_not_exact_issue_time",
+  "weather_sha256": "70933724d0ee7ab811ce2f7b95f69326f01c897a7fa2df02debfde0fa32eb84e",
+  "weather_rows_selected": 50832,
+  "missing_weather_rows_dropped": 0,
+  "joined_rows": 49568,
+  "unique_target_hours": 24784,
+  "first_valid_time": "2023-03-10 18:00:00+00:00",
+  "last_valid_time": "2026-01-31 18:00:00+00:00",
+  "turbine_audits": {
+    "turbine_2": {
+      "source_rows": 149499,
+      "invalid_or_ambiguous_rows": 6,
+      "ambiguous_or_nonexistent_timestamps": 6,
+      "complete_hours": 24784,
+      "incomplete_hours": 219,
+      "source_sha256": "820578cd18bb557cd30c2e102f3ae5a386dfc6c489a5a15743339c2b017305e5"
+    }
+  },
+  "dataset_sha256": "5e28f5b767c8a0cc80a95c7b23d2fb7c6457bff91f763cd41753e5eac8da7818"
+}

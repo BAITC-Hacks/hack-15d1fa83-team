@@ -30,7 +30,7 @@ Each record contains ONLY:
 | wind_direction_10m_deg | Direction wind comes FROM, clockwise from north, 0–360° |
 | temperature_2m_c | Air temperature 2 m above ground, Celsius |
 
-Values must be finite JSON numbers, never strings, null, booleans, NaN or Infinity. Unknown fields are rejected. Gaps, duplicates, fractional hours and naive timestamps are rejected. Django additionally rejects temperatures below absolute zero.
+Values must be finite JSON numbers, never strings, null, booleans, NaN or Infinity. Unknown fields are rejected. Gaps, duplicates, fractional hours and naive timestamps are rejected. Django and ML both enforce wind speed 0–100 m/s and temperature −100–70 °C.
 
 Pressure, forecast age, issue/publication time and provenance stay in the weather snapshot. They are NOT sent to ML. No 100 m substitution or fallback to GFS/ICON is permitted. Changing weather source requires retraining/deployment and a contract update.
 
@@ -46,28 +46,34 @@ Django preserves `alignment_confirmed` verbatim in the database, JSON, CSV and U
 
 [Complete output example](examples/ml-output.json), [output schema](ml-output.schema.json).
 
-## GET /v1/metadata — adapter boundary to confirm
+## GET /v1/metadata — verified joint-model structure
 
-Django reads fresh metadata before every inference/cache decision. Support comes from the loaded artifact, never from the two turbines registered in Django. The turbine-2 artifact must report only turbine_2; add turbine_1 only when joint weights are deployed.
-
-The teammate contract specifies metadata semantics but not its exact JSON structure. Until an actual response is provided, the adapter in `forecasting/ml_client.py:get_metadata` expects:
+The committed artifact is mlp-76540e5972a6 and supports both turbine_1 and turbine_2. The service actually returns:
 
 ```json
 {
-  "model_version": "mlp-<artifact-hash>",
-  "supported_turbines": ["turbine_2"],
-  "weather_model": "jma_gsm",
-  "field_definitions": {
-    "wind_speed_10m_ms": "10 m wind, m/s",
-    "wind_direction_10m_deg": "FROM north clockwise, degrees",
-    "temperature_2m_c": "2 m air temperature, Celsius"
-  }
+  "input_schema_version": "windpower.input.v1",
+  "output_schema_version": "windpower.output.v1",
+  "model_version": "mlp-76540e5972a6",
+  "supported_turbines": ["turbine_1", "turbine_2"],
+  "supported_weather_models": ["jma_gsm"],
+  "required_records": 48,
+  "time_step_hours": 1,
+  "timezone": "UTC",
+  "fields": {
+    "wind_speed_10m_ms": {"unit": "m/s", "height_m": 10},
+    "wind_direction_10m_deg": {"unit": "degrees clockwise from north, direction FROM", "height_m": 10},
+    "temperature_2m_c": {"unit": "Celsius", "height_m": 2}
+  },
+  "alignment_confirmed": false
 }
 ```
 
-Accepted aliases: `turbine_ids`; `weather_source` as string or object containing `weather_model`/ `model`; `input_fields` or `feature_names` for field definitions. Missing required capability information produces a visible 502; there is no invented default turbine support. Raw metadata is retained in the normalized API response for inspection. Confirm this mapping against the real deployed service before integration sign-off.
+Additional metadata includes turbine_locations and archive_semantics. Django validates the schema versions, hourly horizon and feature heights, then exposes normalized weather_model/field_definitions at GET /api/v1/ml/metadata/. It retains the full raw upstream metadata. Legacy aliases remain only for test-adapter compatibility.
 
-Django exposes normalized metadata at `GET /api/v1/ml/metadata/`. Default upstream URL is the sibling `/v1/metadata` of `ML_SERVICE_URL`; override with `ML_METADATA_URL` for a gateway.
+Fresh metadata is required before cache lookup. Support comes from the loaded artifact, not configured Django turbine rows. Default upstream metadata URL is the /metadata sibling of ML_SERVICE_URL; ML_METADATA_URL can override it.
+
+The committed model requires explicit --allow-provisional or ALLOW_PROVISIONAL_MODEL=1 because measurement interval alignment remains unconfirmed. Never flip the artifact flag just to make it start.
 
 ## Weather and caching
 
@@ -97,7 +103,7 @@ $env:ML_SERVICE_TOKEN = 'same-shared-token-if-required'
 .venv/Scripts/python.exe manage.py runserver
 ```
 
-Omit/unset the token if not configured upstream. `.env.example` is documentation; .env is not automatically loaded. Restart Django after changes. A GitHub branch is not a hosted API. No real deployment URL or real metadata response has been supplied, so real-artifact end-to-end compatibility still needs verification.
+Omit/unset the token if not configured upstream. `.env.example` is documentation; .env is not automatically loaded. Restart Django after changes. A GitHub branch is not a hosted API. The unified repository includes the actual CPU service and weights. Local real-artifact integration is covered by tests/test_unified_integration.py; an external hosted URL is only needed if deploying on another machine.
 
 For a local HTTP-only contract test: `python tools/mock_ml_service.py`. It defaults to turbine_2, version mock-contract-v2 and alignment=false. Set `MOCK_SUPPORTED_TURBINES=turbine_1,turbine_2` to simulate joint deployment. `MOCK_PORT` defaults to 8001; `MOCK_MODEL_VERSION` and `ML_SERVICE_TOKEN` are configurable. This is a test server, not trained ML. With Django HTTP mode use real weather/an imported verified archive, not the synthetic UI provider.
 

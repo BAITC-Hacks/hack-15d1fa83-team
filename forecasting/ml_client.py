@@ -2,7 +2,7 @@
 from urllib.parse import urlsplit, urlunsplit
 import requests
 from django.conf import settings
-from common.contracts import DomainError, INPUT_SCHEMA, OUTPUT_SCHEMA, WEATHER_MODEL, RECORD_FIELDS, text
+from common.contracts import DomainError, INPUT_SCHEMA, OUTPUT_SCHEMA, WEATHER_MODEL, FEATURE_FIELDS, text
 
 FIELD_DEFINITIONS = {
     'target_time': 'Timezone-aware ISO 8601; consecutive whole UTC hours.',
@@ -52,8 +52,7 @@ def get_metadata():
     if settings.ML_BACKEND != 'http':
         raise DomainError('ml_configuration', 'ML_BACKEND должен быть demo или http.', 503)
     data = call_service('GET', metadata_url())
-    # Metadata JSON field names were not fully specified by the teammate.
-    # Keep this mapping in one place; never infer turbine support from a model name.
+    # Normalize the actual joint-model metadata; retain aliases for older test services.
     try:
         if not isinstance(data, dict):
             raise DomainError('invalid_metadata', 'metadata должен быть объектом.')
@@ -64,14 +63,32 @@ def get_metadata():
         for turbine in turbines:
             text(turbine, 'supported_turbines item', 64)
         source = data.get('weather_model', data.get('weather_source'))
+        if 'supported_weather_models' in data:
+            sources = data['supported_weather_models']
+            if not isinstance(sources, list) or not sources or any(not isinstance(s, str) for s in sources):
+                raise DomainError('invalid_metadata', 'supported_weather_models должен быть непустым списком строк.')
+            source = WEATHER_MODEL if WEATHER_MODEL in sources else sources[0]
+            if data.get('input_schema_version') != INPUT_SCHEMA or data.get('output_schema_version') != OUTPUT_SCHEMA:
+                raise DomainError('invalid_metadata', 'Версии схем ML metadata не совпадают с контрактом Django.')
+            if data.get('required_records') != 48 or data.get('time_step_hours') != 1 or data.get('timezone') != 'UTC':
+                raise DomainError('invalid_metadata', 'ML должен использовать 48 целых часов UTC.')
         if isinstance(source, dict):
             source = source.get('weather_model', source.get('model'))
         source = text(source, 'weather_model')
-        definitions = data.get('field_definitions', data.get('input_fields', data.get('feature_names')))
+        definitions = data.get('fields', data.get('field_definitions', data.get('input_fields', data.get('feature_names'))))
         if not isinstance(definitions, (dict, list)) or not definitions:
             raise DomainError('invalid_metadata', 'metadata должен содержать field_definitions, input_fields или feature_names.')
+        if 'fields' in data:
+            if not isinstance(definitions, dict) or not set(FEATURE_FIELDS) <= definitions.keys():
+                raise DomainError('invalid_metadata', 'metadata не содержит необходимые погодные признаки.')
+            for field, height in zip(FEATURE_FIELDS, (10, 10, 2)):
+                if not isinstance(definitions[field], dict) or definitions[field].get('height_m') != height:
+                    raise DomainError('invalid_metadata', 'Высота погодных признаков не совпадает с контрактом.')
+            if type(data.get('alignment_confirmed')) is not bool:
+                raise DomainError('invalid_metadata', 'metadata должен содержать boolean alignment_confirmed.')
         return {'model_version': version, 'supported_turbines': turbines, 'weather_model': source,
                 'field_definitions': definitions, 'is_demo': version.startswith(('mock-', 'demo-')),
+                'alignment_confirmed': data.get('alignment_confirmed'),
                 'metadata_source': 'loaded_artifact', 'raw': data}
     except DomainError as exc:
         raise DomainError('invalid_ml_metadata', exc.message, 502)

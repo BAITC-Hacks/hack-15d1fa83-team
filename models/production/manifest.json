@@ -1,0 +1,29 @@
+{
+  "release": "windpower-ml-v1",
+  "model_version": "mlp-76540e5972a6",
+  "artifact_sha256": "997066f7ddaeedbb6db840e2edfbaae947da487146b76949f076d1504b8ea55d",
+  "dataset_sha256": "4fe9d470509ca90b2c3bd229658a0bfd21b58d47758e2e32f0c70500b6f79ebf",
+  "turbines": [
+    "turbine_1",
+    "turbine_2"
+  ],
+  "weather_model": "jma_gsm",
+  "alignment_confirmed": false,
+  "selection": "Retain the original GPU-trained MSE network for lower January RMSE than the MAE-focused alternatives. The CPU MSE control had slightly lower January RMSE but worse 2025 validation MAE; no change selected using January. RMSE is an aggregate measure, not a guarantee against extreme errors.",
+  "training_device": "cuda",
+  "best_epoch": 18,
+  "epochs_run": 28,
+  "january_metrics": {
+    "mae": 0.1785251945257187,
+    "rmse": 0.2386350780725479,
+    "bias": 0.06644692271947861,
+    "rows": 2956
+  },
+  "capabilities": "48 consecutive hourly inputs, one turbine per request, CPU inference",
+  "limitations": [
+    "Unconfirmed interval start/end alignment",
+    "Fixed-offset weather archive does not establish exact historical forecast issue availability",
+    "No February target measurements supplied",
+    "Live teammate integration pending"
+  ]
+}

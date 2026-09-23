@@ -41,7 +41,7 @@
     },
     "/v1/metadata": {
       "get": {
-        "summary": "External loaded artifact capabilities; exact upstream shape to confirm",
+        "summary": "Loaded artifact: supported_turbines, supported_weather_models, fields, schema versions, required_records and alignment_confirmed",
         "responses": {
           "200": {
             "description": "Model version, supported turbines, weather source and field definitions"
@@ -290,124 +290,10 @@
   "components": {
     "schemas": {
       "MLInput": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "$id": "https://arys.example/schemas/ml-input.json",
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "schema_version",
-          "turbine_id",
-          "weather_model",
-          "records"
-        ],
-        "properties": {
-          "schema_version": {
-            "const": "windpower.input.v1"
-          },
-          "turbine_id": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 64
-          },
-          "weather_model": {
-            "const": "jma_gsm"
-          },
-          "records": {
-            "type": "array",
-            "minItems": 48,
-            "maxItems": 48,
-            "items": {
-              "type": "object",
-              "additionalProperties": false,
-              "required": [
-                "target_time",
-                "wind_speed_10m_ms",
-                "wind_direction_10m_deg",
-                "temperature_2m_c"
-              ],
-              "properties": {
-                "target_time": {
-                  "type": "string",
-                  "format": "date-time",
-                  "description": "Timezone-aware consecutive whole hours; UTC Z preferred."
-                },
-                "wind_speed_10m_ms": {
-                  "type": "number",
-                  "minimum": 0
-                },
-                "wind_direction_10m_deg": {
-                  "type": "number",
-                  "minimum": 0,
-                  "maximum": 360
-                },
-                "temperature_2m_c": {
-                  "type": "number",
-                  "minimum": -273.15
-                }
-              }
-            }
-          }
-        }
+        "$ref": "./ml-input.schema.json"
       },
       "MLOutput": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "$id": "https://arys.example/schemas/ml-output.json",
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "schema_version",
-          "turbine_id",
-          "weather_model",
-          "model_version",
-          "alignment_confirmed",
-          "records"
-        ],
-        "properties": {
-          "schema_version": {
-            "const": "windpower.output.v1"
-          },
-          "turbine_id": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 64
-          },
-          "weather_model": {
-            "const": "jma_gsm"
-          },
-          "model_version": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 160
-          },
-          "alignment_confirmed": {
-            "type": "boolean"
-          },
-          "records": {
-            "type": "array",
-            "minItems": 48,
-            "maxItems": 48,
-            "items": {
-              "type": "object",
-              "additionalProperties": false,
-              "required": [
-                "target_time",
-                "predicted_normalized_power"
-              ],
-              "properties": {
-                "target_time": {
-                  "type": "string",
-                  "format": "date-time",
-                  "description": "Timezone-aware consecutive whole hours; UTC Z preferred."
-                },
-                "predicted_normalized_power": {
-                  "type": "number",
-                  "minimum": 0,
-                  "maximum": 1
-                }
-              }
-            }
-          }
-        }
+        "$ref": "./ml-output.schema.json"
       },
       "ForecastRequest": {
         "type": "object",

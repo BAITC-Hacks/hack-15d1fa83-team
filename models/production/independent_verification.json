@@ -1,0 +1,40 @@
+{
+  "model_version": "mlp-76540e5972a6",
+  "dataset_sha256": "4fe9d470509ca90b2c3bd229658a0bfd21b58d47758e2e32f0c70500b6f79ebf",
+  "training_device": "cuda",
+  "best_epoch": 18,
+  "epochs_run": 28,
+  "evaluation_rows": 2956,
+  "unique_turbine_hours": 1478,
+  "max_export_prediction_difference": 1.8173538207655326e-07,
+  "recomputed_metrics": {
+    "mae": 0.17852520226103114,
+    "rmse": 0.23863506716521116,
+    "bias": 0.06644692917337183
+  },
+  "metrics_by_turbine": {
+    "turbine_1": {
+      "mae": 0.17389749287507075,
+      "rmse": 0.23277238357113797,
+      "bias": 0.05913616723922472,
+      "rows": 1478,
+      "unique_target_hours": 739
+    },
+    "turbine_2": {
+      "mae": 0.18315291164699146,
+      "rmse": 0.24435713210074456,
+      "bias": 0.07375769110751897,
+      "rows": 1478,
+      "unique_target_hours": 739
+    }
+  },
+  "wind_curve_mae": 0.2518983172766146,
+  "mae_reduction_vs_wind_curve": 0.29128068741726043,
+  "api_checks": [
+    "turbine_1: real archived 48-hour input, prediction parity, repeatability, authentication and provider mismatch checks passed",
+    "turbine_2: real archived 48-hour input, prediction parity, repeatability, authentication and provider mismatch checks passed"
+  ],
+  "api_verification": "In-process FastAPI requests using real archived weather; live teammate integration pending",
+  "alignment_confirmed": false,
+  "archive_semantics": "provider_fixed_offset_not_exact_issue_time"
+}

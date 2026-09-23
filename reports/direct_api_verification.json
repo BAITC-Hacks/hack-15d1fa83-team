@@ -1,0 +1,11 @@
+{
+  "status": "passed",
+  "model_version": "mlp-4163decdcbe5",
+  "supported_turbines": [
+    "turbine_2"
+  ],
+  "records": 48,
+  "weather_source": "jma_gsm",
+  "alignment_confirmed": false,
+  "verification": "Real downloaded Brev model, synthetic 48-hour weather contract example, in-process HTTP test; teammate live Django endpoint not yet exercised"
+}

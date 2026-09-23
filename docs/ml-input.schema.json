@@ -1,60 +1,78 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://arys.example/schemas/ml-input.json",
-  "type": "object",
+  "$defs": {
+    "InputRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "target_time": {
+          "format": "date-time",
+          "title": "Target Time",
+          "type": "string"
+        },
+        "wind_speed_10m_ms": {
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Wind Speed 10M Ms",
+          "type": "number"
+        },
+        "wind_direction_10m_deg": {
+          "maximum": 360,
+          "minimum": 0,
+          "title": "Wind Direction 10M Deg",
+          "type": "number"
+        },
+        "temperature_2m_c": {
+          "maximum": 70,
+          "minimum": -100,
+          "title": "Temperature 2M C",
+          "type": "number"
+        }
+      },
+      "required": [
+        "target_time",
+        "wind_speed_10m_ms",
+        "wind_direction_10m_deg",
+        "temperature_2m_c"
+      ],
+      "title": "InputRecord",
+      "type": "object"
+    }
+  },
   "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "windpower.input.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "turbine_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Turbine Id",
+      "type": "string"
+    },
+    "weather_model": {
+      "maxLength": 160,
+      "minLength": 1,
+      "title": "Weather Model",
+      "type": "string"
+    },
+    "records": {
+      "items": {
+        "$ref": "#/$defs/InputRecord"
+      },
+      "maxItems": 48,
+      "minItems": 48,
+      "title": "Records",
+      "type": "array"
+    }
+  },
   "required": [
     "schema_version",
     "turbine_id",
     "weather_model",
     "records"
   ],
-  "properties": {
-    "schema_version": {
-      "const": "windpower.input.v1"
-    },
-    "turbine_id": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 64
-    },
-    "weather_model": {
-      "const": "jma_gsm"
-    },
-    "records": {
-      "type": "array",
-      "minItems": 48,
-      "maxItems": 48,
-      "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "target_time",
-          "wind_speed_10m_ms",
-          "wind_direction_10m_deg",
-          "temperature_2m_c"
-        ],
-        "properties": {
-          "target_time": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Timezone-aware consecutive whole hours; UTC Z preferred."
-          },
-          "wind_speed_10m_ms": {
-            "type": "number",
-            "minimum": 0
-          },
-          "wind_direction_10m_deg": {
-            "type": "number",
-            "minimum": 0,
-            "maximum": 360
-          },
-          "temperature_2m_c": {
-            "type": "number",
-            "minimum": -273.15
-          }
-        }
-      }
-    }
-  }
+  "title": "PredictRequest",
+  "type": "object"
 }

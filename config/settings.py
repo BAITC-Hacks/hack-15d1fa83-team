@@ -21,7 +21,7 @@ TEMPLATES = [{'BACKEND': 'django.template.backends.django.DjangoTemplates', 'DIR
               'APP_DIRS': True, 'OPTIONS': {'context_processors': ['django.template.context_processors.request',
               'django.contrib.auth.context_processors.auth', 'django.contrib.messages.context_processors.messages']}}]
 WSGI_APPLICATION = 'config.wsgi.application'
-DATABASES = {'default': {'ENGINE': 'django.db.backends.sqlite3', 'NAME': BASE_DIR / 'db.sqlite3', 'OPTIONS': {'timeout': 30}}}
+DATABASES = {'default': {'ENGINE': 'django.db.backends.sqlite3', 'NAME': os.getenv('DJANGO_DB_PATH') or BASE_DIR / 'db.sqlite3', 'OPTIONS': {'timeout': 30}}}
 LANGUAGE_CODE = 'ru'
 TIME_ZONE = 'UTC'
 USE_TZ = True
@@ -29,7 +29,7 @@ STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-ML_BACKEND = os.getenv('ML_BACKEND', 'demo')
+ML_BACKEND = os.getenv('ML_BACKEND', 'http')
 ML_SERVICE_URL = os.getenv('ML_SERVICE_URL', 'http://127.0.0.1:8001/v1/predict')
 ML_METADATA_URL = os.getenv('ML_METADATA_URL', '')
 ML_SERVICE_TOKEN = os.getenv('ML_SERVICE_TOKEN', '')

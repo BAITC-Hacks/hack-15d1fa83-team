@@ -1,2 +1,5 @@
+# Unified runtime: Django portal + CPU inference; no training dependencies.
+-r requirements-runtime.txt
 Django==5.2.17
 requests==2.34.2
+-e .

@@ -1,0 +1,19 @@
+{
+  "model_version": "mlp-4163decdcbe5",
+  "training_device": "cuda",
+  "best_epoch": 25,
+  "epochs_run": 35,
+  "evaluation_rows": 1478,
+  "unique_target_hours": 739,
+  "recomputed_mae": 0.186002806508607,
+  "recomputed_rmse": 0.24889734658402354,
+  "recomputed_bias": 0.0808486742586785,
+  "checks": [
+    "Exported January predictions match downloaded portable weights",
+    "24-hour API request matches direct model inference",
+    "48-hour API request matches direct model inference",
+    "Untrained turbine rejected"
+  ],
+  "weather_integration": "In-process simulated HTTP provider returning real archived weather rows; teammate live endpoint not yet tested",
+  "alignment_confirmed": false
+}

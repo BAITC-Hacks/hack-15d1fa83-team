@@ -1,0 +1,45 @@
+{
+  "date": "2026-09-23",
+  "source_commits": {
+    "django": "d34ac60",
+    "ml": "e345546",
+    "main": "28cefae"
+  },
+  "model_version": "mlp-76540e5972a6",
+  "artifact_sha256": "997066f7ddaeedbb6db840e2edfbaae947da487146b76949f076d1504b8ea55d",
+  "artifact_unchanged": true,
+  "alignment_confirmed": false,
+  "tests": {
+    "passed": 95,
+    "subtests_passed": 28,
+    "warnings": 2,
+    "python": "3.12.4",
+    "torch_for_training_fixtures": "2.6.0+cpu"
+  },
+  "real_http_integration": {
+    "turbines": [
+      "turbine_1",
+      "turbine_2"
+    ],
+    "reference_absolute_tolerance": 0.000002,
+    "metadata": "verified",
+    "authorization": "verified",
+    "django_persistence": "verified",
+    "cache": "verified",
+    "no_fallback": "verified"
+  },
+  "browser": {
+    "actual_model": true,
+    "replay": true,
+    "display_24_hours": true,
+    "alignment_warning": true
+  },
+  "docker_verified": false,
+  "production_deployment_verified": false,
+  "limitations": [
+    "Unconfirmed measurement interval alignment",
+    "Estimated fixed-offset archive availability",
+    "No February target values"
+  ],
+  "notes": "Test fixtures alone trained on CPU; selected model unchanged. PyTorch 2.14 CPU DLL failed locally; 2.6 passed all tests."
+}

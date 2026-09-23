@@ -1,0 +1,36 @@
+# Local hackathon stack, not a public production deployment.
+services:
+  windpower-ml:
+    build: .
+    ports:
+      - "127.0.0.1:8001:8000"
+    environment:
+      MODEL_PATH: /app/models/production/model.json
+      # Must be explicitly set to 1 to accept the documented provisional alignment.
+      ALLOW_PROVISIONAL_MODEL: ${ALLOW_PROVISIONAL_MODEL:-0}
+      ML_SERVICE_TOKEN: ${ML_SERVICE_TOKEN:-}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+  web:
+    build: .
+    command: ["sh", "-c", "python manage.py migrate --noinput && python manage.py seed_demo && python manage.py runserver 0.0.0.0:8000 --noreload"]
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      DJANGO_DEBUG: "1"
+      DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1
+      DJANGO_DB_PATH: /app/data/db.sqlite3
+      ML_BACKEND: http
+      ML_SERVICE_URL: http://windpower-ml:8000/v1/predict
+      ML_SERVICE_TOKEN: ${ML_SERVICE_TOKEN:-}
+    volumes:
+      - django-data:/app/data
+    depends_on:
+      windpower-ml:
+        condition: service_healthy
+volumes:
+  django-data:

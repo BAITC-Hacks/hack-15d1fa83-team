@@ -85,9 +85,9 @@ def request_window(data):
 def feature_record(row):
     return {
         'target_time': iso(timestamp(row.get('target_time'), 'target_time')),
-        'wind_speed_10m_ms': number(row.get('wind_speed_10m_ms'), 'wind_speed_10m_ms', 0),
+        'wind_speed_10m_ms': number(row.get('wind_speed_10m_ms'), 'wind_speed_10m_ms', 0, 100),
         'wind_direction_10m_deg': number(row.get('wind_direction_10m_deg'), 'wind_direction_10m_deg', 0, 360),
-        'temperature_2m_c': number(row.get('temperature_2m_c'), 'temperature_2m_c', -273.15),
+        'temperature_2m_c': number(row.get('temperature_2m_c'), 'temperature_2m_c', -100, 70),
     }
 
 
