@@ -1,0 +1,544 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Wind Power Forecast",
+    "version": "0.2.0"
+  },
+  "paths": {
+    "/v1/metadata": {
+      "get": {
+        "summary": "Metadata",
+        "operationId": "metadata_v1_metadata_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/predict": {
+      "post": {
+        "summary": "Predict",
+        "operationId": "predict_v1_predict_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PredictRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PredictResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "Health",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/power/forecast": {
+      "post": {
+        "summary": "Forecast",
+        "operationId": "forecast_power_forecast_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ForecastRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForecastResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ErrorDetail": {
+        "properties": {
+          "path": {
+            "type": "string",
+            "title": "Path"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "path",
+          "message"
+        ],
+        "title": "ErrorDetail"
+      },
+      "ErrorInfo": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "details": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ErrorDetail"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Details"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "ErrorInfo"
+      },
+      "ErrorResponse": {
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ErrorInfo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "title": "ErrorResponse"
+      },
+      "ForecastRequest": {
+        "properties": {
+          "turbine_id": {
+            "type": "string",
+            "title": "Turbine Id"
+          },
+          "hours": {
+            "type": "integer",
+            "maximum": 48.0,
+            "minimum": 1.0,
+            "title": "Hours",
+            "default": 48
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "turbine_id"
+        ],
+        "title": "ForecastRequest"
+      },
+      "ForecastResponse": {
+        "properties": {
+          "turbine_id": {
+            "type": "string",
+            "title": "Turbine Id"
+          },
+          "model_version": {
+            "type": "string",
+            "title": "Model Version"
+          },
+          "weather_model": {
+            "type": "string",
+            "title": "Weather Model"
+          },
+          "generated_at_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Generated At Utc"
+          },
+          "alignment_confirmed": {
+            "type": "boolean",
+            "title": "Alignment Confirmed"
+          },
+          "hourly": {
+            "items": {
+              "$ref": "#/components/schemas/PredictionHour"
+            },
+            "type": "array",
+            "title": "Hourly"
+          }
+        },
+        "type": "object",
+        "required": [
+          "turbine_id",
+          "model_version",
+          "weather_model",
+          "generated_at_utc",
+          "alignment_confirmed",
+          "hourly"
+        ],
+        "title": "ForecastResponse"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "InputRecord": {
+        "properties": {
+          "target_time": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Target Time"
+          },
+          "wind_speed_10m_ms": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Wind Speed 10M Ms"
+          },
+          "wind_direction_10m_deg": {
+            "type": "number",
+            "maximum": 360.0,
+            "minimum": 0.0,
+            "title": "Wind Direction 10M Deg"
+          },
+          "temperature_2m_c": {
+            "type": "number",
+            "maximum": 70.0,
+            "minimum": -100.0,
+            "title": "Temperature 2M C"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "target_time",
+          "wind_speed_10m_ms",
+          "wind_direction_10m_deg",
+          "temperature_2m_c"
+        ],
+        "title": "InputRecord"
+      },
+      "OutputRecord": {
+        "properties": {
+          "target_time": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Target Time"
+          },
+          "predicted_normalized_power": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Predicted Normalized Power"
+          }
+        },
+        "type": "object",
+        "required": [
+          "target_time",
+          "predicted_normalized_power"
+        ],
+        "title": "OutputRecord"
+      },
+      "PredictRequest": {
+        "properties": {
+          "schema_version": {
+            "type": "string",
+            "const": "windpower.input.v1",
+            "title": "Schema Version"
+          },
+          "turbine_id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Turbine Id"
+          },
+          "weather_model": {
+            "type": "string",
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Weather Model"
+          },
+          "records": {
+            "items": {
+              "$ref": "#/components/schemas/InputRecord"
+            },
+            "type": "array",
+            "maxItems": 48,
+            "minItems": 48,
+            "title": "Records"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "schema_version",
+          "turbine_id",
+          "weather_model",
+          "records"
+        ],
+        "title": "PredictRequest"
+      },
+      "PredictResponse": {
+        "properties": {
+          "schema_version": {
+            "type": "string",
+            "const": "windpower.output.v1",
+            "title": "Schema Version",
+            "default": "windpower.output.v1"
+          },
+          "turbine_id": {
+            "type": "string",
+            "title": "Turbine Id"
+          },
+          "weather_model": {
+            "type": "string",
+            "title": "Weather Model"
+          },
+          "model_version": {
+            "type": "string",
+            "title": "Model Version"
+          },
+          "alignment_confirmed": {
+            "type": "boolean",
+            "title": "Alignment Confirmed"
+          },
+          "records": {
+            "items": {
+              "$ref": "#/components/schemas/OutputRecord"
+            },
+            "type": "array",
+            "maxItems": 48,
+            "minItems": 48,
+            "title": "Records"
+          }
+        },
+        "type": "object",
+        "required": [
+          "turbine_id",
+          "weather_model",
+          "model_version",
+          "alignment_confirmed",
+          "records"
+        ],
+        "title": "PredictResponse"
+      },
+      "PredictionHour": {
+        "properties": {
+          "time": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Time"
+          },
+          "normalized_power": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Normalized Power"
+          }
+        },
+        "type": "object",
+        "required": [
+          "time",
+          "normalized_power"
+        ],
+        "title": "PredictionHour"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}

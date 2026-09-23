@@ -3,12 +3,19 @@ import asyncio
 from contextlib import asynccontextmanager
 import datetime as dt
 import os
+import math
+import secrets
 from pathlib import Path
 import httpx
 import pandas as pd
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends, Header, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.exception_handlers import request_validation_exception_handler
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, AwareDatetime, ValidationError, model_validator
 from .model import Predictor
+from .archive import SITES
+from .contracts import INPUT_SCHEMA, OUTPUT_SCHEMA, PredictRequest, PredictResponse, OutputRecord, InferenceError, ErrorResponse
 
 class Hour(BaseModel):
     model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
@@ -69,34 +76,89 @@ async def fetch_weather(client, url, token, request):
             raise ProviderError("Weather provider returned an invalid response") from None
     raise ProviderError("Weather provider unavailable")
 
-def create_app(model_path=None, provider_url=None, allow_provisional=None, allow_historical=None, transport=None):
+def create_app(model_path=None, provider_url=None, allow_provisional=None, allow_historical=None, transport=None, service_token=None):
     path = Path(model_path or os.getenv("MODEL_PATH", "artifacts/model.json"))
     url = provider_url or os.getenv("WEATHER_PROVIDER_URL", "")
     provisional = allow_provisional if allow_provisional is not None else os.getenv("ALLOW_PROVISIONAL_MODEL", "0") == "1"
     historical = allow_historical if allow_historical is not None else os.getenv("ALLOW_HISTORICAL_FORECASTS", "0") == "1"
+    token = service_token if service_token is not None else os.getenv("ML_SERVICE_TOKEN", "")
 
     @asynccontextmanager
     async def lifespan(app):
         # A missing or invalid artifact prevents startup. No fabricated predictions.
         app.state.predictor = Predictor(path, allow_provisional=provisional)
-        if not url.startswith(("http://", "https://")):
+        if url and not url.startswith(("http://", "https://")):
             raise ValueError("WEATHER_PROVIDER_URL must be the team's HTTP(S) forecast endpoint")
-        async with httpx.AsyncClient(timeout=float(os.getenv("WEATHER_TIMEOUT_SECONDS", "15")), transport=transport) as client:
-            app.state.client = client
+        if url:
+            async with httpx.AsyncClient(timeout=float(os.getenv("WEATHER_TIMEOUT_SECONDS", "15")), transport=transport) as client:
+                app.state.client = client
+                yield
+        else:
             yield
 
-    app = FastAPI(title="Wind Power Forecast", version="0.1.0", lifespan=lifespan)
+    app = FastAPI(title="Wind Power Forecast", version="0.2.0", lifespan=lifespan)
+
+    def require_auth(authorization: str | None = Header(default=None)):
+        if token and not secrets.compare_digest((authorization or "").encode(), ("Bearer " + token).encode()):
+            raise InferenceError(401, "unauthorized", "A valid Bearer token is required")
+
+    @app.exception_handler(InferenceError)
+    async def inference_error(request: Request, error: InferenceError):
+        return JSONResponse(status_code=error.status, content={"error": {"code": error.code, "message": error.message}}, headers={"WWW-Authenticate": "Bearer"} if error.status == 401 else None)
+
+    @app.exception_handler(RequestValidationError)
+    async def invalid_request(request: Request, error: RequestValidationError):
+        if request.url.path != "/v1/predict":
+            return await request_validation_exception_handler(request, error)
+        return JSONResponse(status_code=422, content={"error": {
+            "code": "invalid_request", "message": "Request does not match " + INPUT_SCHEMA,
+            "details": [{"path": ".".join(map(str, item["loc"])), "message": item["msg"]} for item in error.errors()],
+        }})
+
+    @app.get("/v1/metadata", dependencies=[Depends(require_auth)])
+    def metadata():
+        predictor = app.state.predictor
+        return {
+            "input_schema_version": INPUT_SCHEMA, "output_schema_version": OUTPUT_SCHEMA,
+            "model_version": predictor.bundle["model_version"],
+            "supported_turbines": predictor.turbines,
+            "supported_weather_models": [predictor.bundle["weather_model"]],
+            "required_records": 48, "time_step_hours": 1, "timezone": "UTC",
+            "fields": {"wind_speed_10m_ms": {"unit": "m/s", "height_m": 10}, "wind_direction_10m_deg": {"unit": "degrees clockwise from north, direction FROM", "height_m": 10}, "temperature_2m_c": {"unit": "Celsius", "height_m": 2}},
+            "turbine_locations": {name: {"latitude": lat, "longitude": lon} for name, lat, lon in SITES if name in predictor.turbines},
+            "alignment_confirmed": predictor.bundle["dataset_metadata"]["alignment_confirmed"],
+            "archive_semantics": predictor.bundle["dataset_metadata"].get("archive_semantics", "unknown"),
+        }
+
+    @app.post("/v1/predict", response_model=PredictResponse, dependencies=[Depends(require_auth)],
+              responses={401: {"model": ErrorResponse}, 422: {"model": ErrorResponse}, 500: {"model": ErrorResponse}})
+    def predict(request: PredictRequest):
+        predictor = app.state.predictor
+        if request.turbine_id not in predictor.turbines:
+            raise InferenceError(422, "unsupported_turbine", "Loaded artifact has no trained model for this turbine; check /v1/metadata")
+        if request.weather_model != predictor.bundle["weather_model"]:
+            raise InferenceError(422, "weather_model_mismatch", "Weather source does not match the loaded artifact; check /v1/metadata")
+        frame = pd.DataFrame([{**row.model_dump(), "valid_time_utc": row.target_time, "turbine_id": request.turbine_id} for row in request.records])
+        # Pure inference: no weather lookup, wall-clock filtering, training or persistence.
+        values = predictor.predict(frame, request.weather_model)
+        if len(values) != 48 or any(not math.isfinite(v) or not 0 <= v <= 1 for v in values):
+            raise InferenceError(500, "invalid_model_output", "Model produced an invalid prediction")
+        return PredictResponse(turbine_id=request.turbine_id, weather_model=request.weather_model,
+            model_version=predictor.bundle["model_version"], alignment_confirmed=predictor.bundle["dataset_metadata"]["alignment_confirmed"],
+            records=[OutputRecord(target_time=row.target_time, predicted_normalized_power=float(value)) for row, value in zip(request.records, values)])
 
     @app.get("/health")
     def health():
         predictor = app.state.predictor
         return {"status": "ready", "model_version": predictor.bundle["model_version"], "supported_turbines": predictor.turbines}
 
-    @app.post("/power/forecast", response_model=ForecastResponse)
+    @app.post("/power/forecast", response_model=ForecastResponse, dependencies=[Depends(require_auth)])
     async def forecast(request: ForecastRequest):
         predictor = app.state.predictor
         if request.turbine_id not in predictor.turbines:
             raise HTTPException(422, "No trained model for this turbine")
+        if not url:
+            raise HTTPException(503, "Weather provider not configured; use /v1/predict with prepared weather")
         requested_at = dt.datetime.now(dt.timezone.utc)
         expected_start = requested_at.replace(minute=0, second=0, microsecond=0) + dt.timedelta(hours=1)
         try:

@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "OutputRecord": {
+      "properties": {
+        "target_time": {
+          "format": "date-time",
+          "title": "Target Time",
+          "type": "string"
+        },
+        "predicted_normalized_power": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Predicted Normalized Power",
+          "type": "number"
+        }
+      },
+      "required": [
+        "target_time",
+        "predicted_normalized_power"
+      ],
+      "title": "OutputRecord",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "schema_version": {
+      "const": "windpower.output.v1",
+      "default": "windpower.output.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "turbine_id": {
+      "title": "Turbine Id",
+      "type": "string"
+    },
+    "weather_model": {
+      "title": "Weather Model",
+      "type": "string"
+    },
+    "model_version": {
+      "title": "Model Version",
+      "type": "string"
+    },
+    "alignment_confirmed": {
+      "title": "Alignment Confirmed",
+      "type": "boolean"
+    },
+    "records": {
+      "items": {
+        "$ref": "#/$defs/OutputRecord"
+      },
+      "maxItems": 48,
+      "minItems": 48,
+      "title": "Records",
+      "type": "array"
+    }
+  },
+  "required": [
+    "turbine_id",
+    "weather_model",
+    "model_version",
+    "alignment_confirmed",
+    "records"
+  ],
+  "title": "PredictResponse",
+  "type": "object"
+}

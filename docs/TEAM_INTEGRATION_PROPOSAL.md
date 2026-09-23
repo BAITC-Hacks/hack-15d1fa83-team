@@ -1,6 +1,6 @@
 # Proposed shared weather contract and request flow
 
-This is a proposal, not an agreed or implemented direct-input endpoint. The `yevgeniy` branch was inspected read-only at commit 97987bbda12f6fd165a7e8d32be1410b024d9e1a. No changes to that branch or messages to its owner were made.
+This records the original design proposal. The direct-input endpoint is now implemented on our branch; [ML_SERVICE_CONTRACT.md](ML_SERVICE_CONTRACT.md) is authoritative for the exact current fields and errors. The other party has not yet confirmed adaptation. The `yevgeniy` branch was inspected read-only at commit 97987bbda12f6fd165a7e8d32be1410b024d9e1a. No changes to that branch or messages to its owner were made.
 
 ## Weather choice
 
@@ -34,7 +34,7 @@ The new turbine-2 file is byte-identical to the original. Both CSVs stop at 2026
 5. Django checks the returned timestamps and values, saves the result and model version, and updates the UI. For both turbines it makes two independent requests (they can run concurrently), preserving separate predictions and failures.
 6. Cache results by input-snapshot hash, turbine ID and deployed model version. New weather or a new model version triggers recalculation. Missing required weather or a mismatched provider fails visibly; no silent source replacement.
 
-The current `/power/forecast` weather-fetching endpoint remains a standalone convenience interface. The direct-input adapter should become the integration path after the shared contract is agreed; Django calling that convenience endpoint would duplicate weather acquisition and weaken snapshot reproducibility.
+The current `/power/forecast` weather-fetching endpoint remains a standalone convenience interface. The implemented direct-input adapter is the intended integration path; Django calling the convenience endpoint would duplicate weather acquisition and weaken snapshot reproducibility. See ML_SERVICE_CONTRACT.md for deployment and complete examples.
 
 ## Proposed direct-input body
 
@@ -60,6 +60,6 @@ Keep the other branch's response names: `model_version` and `records`, each with
 
 Pressure and forecast age may remain in Django's weather snapshots but are not required inputs for this baseline. Forecast age is not forecast lead time, and neither should be fabricated. A future model can add verified lead-time/provenance features under a new contract version. A proposed metadata endpoint can advertise supported turbines, weather model and input schema to prevent configuration drift.
 
-Changes requested from the other developer: use JMA GSM; request 10 m wind and 2 m temperature in m/s and Celsius; update the ML payload mapper/schema to the explicit names above; keep forecast provenance in their weather layer; select HTTP ML mode; invalidate predictions when the deployed model changes. On our branch: add the direct-input adapter after agreement and deploy the verified model supporting both turbines. No raw-data upload or GPU is required for inference.
+Changes requested from the other developer: use JMA GSM for the current artifact; request 10 m wind and 2 m temperature in m/s and Celsius; update the ML payload mapper/schema to the explicit names above; keep forecast provenance in their weather layer; select HTTP ML mode; invalidate predictions when the deployed model changes. Our direct-input adapter is implemented; deploy verified joint weights when training completes to enable both turbines. No raw-data upload or GPU is required for inference.
 
 Do not sum two normalized outputs to claim plant MW or station capacity factor without knowing each turbine's rated power.

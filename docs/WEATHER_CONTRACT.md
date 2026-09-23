@@ -1,5 +1,7 @@
 # Weather module integration
 
+For the Django team's integration use the implemented [direct-input ML contract](ML_SERVICE_CONTRACT.md): Django sends weather to `POST /v1/predict`. The weather-fetching flow below remains optional for standalone use and is not the recommended team request path.
+
 The power endpoint accepts only a turbine identifier and the number of hours (1–48). No caller-supplied issue time is required. Internally it sends:
 
 ```http

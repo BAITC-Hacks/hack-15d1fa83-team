@@ -5,6 +5,8 @@ import pytest
 from windpower.dataset import assemble, sha256
 from windpower.train import train
 from windpower.model import Predictor
+from windpower.api import create_app
+from fastapi.testclient import TestClient
 
 
 def test_weather_and_measurements_join_by_turbine_not_just_time(tmp_path):
@@ -46,3 +48,16 @@ def test_joint_export_supports_both_ids_and_reports_separate_baselines(trained_f
         assert result["unique_target_hours"] == 24
         assert set(result["neural_by_offset"]) == {"1", "2"}
     assert report["metrics_by_turbine"]["test"]["turbine_1"]["models"]["constant"]["mae"] != report["metrics_by_turbine"]["test"]["turbine_2"]["models"]["constant"]["mae"]
+    # The same trained two-ID test fixture is served through the public contract.
+    times = pd.date_range("2026-01-01", periods=48, freq="h", tz="UTC")
+    records = [dict(target_time=t.isoformat(), wind_speed_10m_ms=5.0, wind_direction_10m_deg=90.0, temperature_2m_c=2.0) for t in times]
+    with TestClient(create_app(tmp_path / "model/model.json", provider_url="")) as client:
+        assert client.get("/v1/metadata").json()["supported_turbines"] == ["turbine_1", "turbine_2"]
+        predictions = {}
+        for turbine in predictor.turbines:
+            result = client.post("/v1/predict", json=dict(schema_version="windpower.input.v1", turbine_id=turbine, weather_model="jma_gsm", records=records))
+            assert result.status_code == 200
+            predictions[turbine] = [r["predicted_normalized_power"] for r in result.json()["records"]]
+            expected = pd.DataFrame(records).rename(columns={"target_time": "valid_time_utc"})
+            expected["turbine_id"] = turbine
+            np.testing.assert_allclose(predictions[turbine], predictor.predict(expected, "jma_gsm"), atol=1e-6)
