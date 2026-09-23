@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ML output v1.0",
+  "type": "object",
+  "required": [
+    "model_version",
+    "records"
+  ],
+  "properties": {
+    "model_version": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "records": {
+      "type": "array",
+      "minItems": 48,
+      "maxItems": 48,
+      "items": {
+        "type": "object",
+        "required": [
+          "target_time",
+          "predicted_normalized_power"
+        ],
+        "properties": {
+          "target_time": {
+            "type": "string",
+            "format": "date-time",
+            "description": "UTC full hour; 48 consecutive timestamps"
+          },
+          "predicted_normalized_power": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        }
+      }
+    }
+  }
+}
