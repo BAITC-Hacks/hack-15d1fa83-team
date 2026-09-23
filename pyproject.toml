@@ -11,6 +11,7 @@ dependencies = ["numpy>=1.26,<3", "pandas>=2.2,<3", "fastapi>=0.115,<1", "httpx>
 
 [project.optional-dependencies]
 train = ["torch>=2.6,<3"]
+benchmark = ["catboost==1.2.8"]
 test = ["pytest>=8,<10"]
 
 [project.scripts]
@@ -23,4 +24,3 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-
