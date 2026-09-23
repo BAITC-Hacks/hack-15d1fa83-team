@@ -31,6 +31,7 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 ML_BACKEND = os.getenv('ML_BACKEND', 'demo')
 ML_SERVICE_URL = os.getenv('ML_SERVICE_URL', 'http://127.0.0.1:8001/v1/predict')
+ML_METADATA_URL = os.getenv('ML_METADATA_URL', '')
 ML_SERVICE_TOKEN = os.getenv('ML_SERVICE_TOKEN', '')
 HTTP_TIMEOUT = float(os.getenv('HTTP_TIMEOUT', '30'))
 WEATHER_PUBLICATION_LAG_HOURS = 8

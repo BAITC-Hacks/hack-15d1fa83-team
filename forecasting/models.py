@@ -9,6 +9,8 @@ class Forecast(models.Model):
     as_of = models.DateTimeField()
     start_time = models.DateTimeField()
     status = models.CharField(max_length=20, default='running')
+    alignment_confirmed = models.BooleanField(null=True, default=None)
+    response_schema_version = models.CharField(max_length=40, blank=True)
     model_version = models.CharField(max_length=160, blank=True)
     is_demo = models.BooleanField(default=False)
     records = models.JSONField(default=list)

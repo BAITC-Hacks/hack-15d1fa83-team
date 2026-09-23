@@ -29,6 +29,7 @@ class WeatherSnapshot(models.Model):
 
 
 class ArchivedRun(models.Model):
+    schema_version = models.CharField(max_length=40, default='legacy')
     id = models.CharField(primary_key=True, max_length=64)
     turbine = models.ForeignKey(Turbine, on_delete=models.PROTECT)
     issued_at = models.DateTimeField()

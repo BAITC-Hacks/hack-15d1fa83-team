@@ -1,55 +1,30 @@
-# Архив прогнозов погоды
+# Weather module — JMA GSM, 10 m
 
-Назначение: возвращать **прогнозные** погодные значения, относящиеся к решению в прошлом, а не погоду, ставшую известной постфактум. Модуль не обучает ML и не использует фактическую мощность ВЭС.
+Only forecasts, never observations or reanalysis. The trained artifact requires JMA GSM wind at 10 m and temperature at 2 m. No silent replacement by wind at 100 m or another model.
 
-## Источник 1: Open-Meteo Previous Runs
+## Sources
 
-Endpoint: `https://previous-runs-api.open-meteo.com/v1/forecast`. Запрашиваются `wind_speed_100m`, `wind_direction_100m`, `temperature_2m`, `surface_pressure` с суффиксами `_previous_day1` ... `_previous_day7`. Единицы явно задаются и проверяются. `models` всегда задан явно, не best_match. Первоначально поддержаны `gfs_global`, `icon_global`, `ecmwf_ifs025`; наличие данных зависит от периода/модели.
+- Live: https://api.open-meteo.com/v1/forecast. Django selects now and the next whole-hour start internally. Requests `models=jma_gsm`, hourly wind_speed_10m, wind_direction_10m, temperature_2m, wind_speed_unit=ms, temperature_unit=celsius, timezone=UTC. Map to wind_speed_10m_ms, wind_direction_10m_deg, temperature_2m_c.
+- Replay convenience source: https://previous-runs-api.open-meteo.com/v1/forecast. Uses those variables with _previous_dayN suffixes. N = ceil((target_time − as_of + 8 hours)/24 hours), minimum 1, maximum 7. This is a forecast archive, not Historical Weather/ERA5.
+- Exact imported archive: a verified JMA forecast run supplied by the data owner with issue/publication metadata.
+- Demo: explicit synthetic data for offline UI development only. Never sent to the external ML adapter.
 
-Для целевого часа `t`, момента решения `a`, запаса на публикацию `L=8h`:
+Official provider references: [Forecast](https://open-meteo.com/en/docs), [JMA](https://open-meteo.com/en/docs/jma-api), [Previous Runs](https://open-meteo.com/en/docs/previous-runs-api).
 
-```text
-d = max(1, ceil((t - a + L) / 24h))
-nominal_issued_at = t - d * 24h
-estimated_available_at = nominal_issued_at + L
-```
+## Availability caveat
 
-Таким образом, `estimated_available_at <= as_of` для каждой строки. Все четыре переменные строки берутся с одинаковой заблаговременностью и одной моделью. Часы из разных fixed-lead рядов можно комбинировать: контракт явно не обещает единый выпуск на 48 часов. Лишние часы ответа отбрасываются; необходимые 48 проверяются полностью, без заполнения пропусков и интерполяции приложением. Провайдер может сам интерполировать модельные значения до почасовой сетки.
+Previous Runs represents fixed lead times, not exact named issuance runs. We estimate issued_at as target minus N days and available_at as issued_at + 8 hours. The snapshot is visibly marked timing=estimated_fixed_lead. This buffer does NOT prove historical availability and is not sufficient for strict leakage-free competition evaluation. The required archive/model/period can be unavailable; that becomes a visible error, not substituted weather.
 
-**Ограничение:** суффикс означает фиксированную заблаговременность, а не документированный момент фактической публикации конкретного model run. Поля issued_at / available_at для этого источника — оценка. Запас 8h — консервативная инженерная настройка, не гарантия того, что не было задержек/перевыпусков у поставщика. Поэтому provenance.timing=`estimated_fixed_lead`; UI, результат и интеграционный документ предупреждают об этом. Для строгого доказательства отсутствия утечки будущего нужны точные архивные выпуски со сведениями о публикации.
+For strict replay, import exact verified runs. The importer requires archived_forecast, weather_model=jma_gsm, wind_height_m=10, temperature_height_m=2, aware issued_at and available_at, source_url, turbine_id and 48–384 ordered hourly records with the three explicit features. Optional pressure (hPa) remains in the snapshot only. The owner is responsible for truthful source timestamps. Reject observations/reanalysis; select newest run whose available_at and issued_at are <= simulated decision time and which covers all 48 hours. Null features, gaps and duplicates are rejected.
 
-Снимок хранит параметры запроса, SHA256 исходного ответа, нормализованные 48 записей, источник и единицы. Полный исходный ответ не хранится. Ветер и температура имеют фиксированные высоты 100/2 м. Для обеих близких турбин поставщик может возвращать одну и ту же ячейку сетки — это нормально, не доказательство одинаковой выработки.
+The live API does not expose verified issuance timestamps: issued_at, available_at, forecast_age_hours and lead_time_hours are null. Retrieval time is stored in provenance; it is not presented as issue time. Live snapshots are not treated as exact historical archive runs.
 
-## Источник 2: импорт точного выпуска
+## Snapshot schema and storage
 
-`POST /api/v1/weather/import/` или `python manage.py import_weather file.json`:
+New snapshots: windpower.weather.v2. Provenance includes source URL, mode, wind/temperature height, request parameters, timing quality and (for Open-Meteo) retrieval time and raw-response hash. Internal rows retain pressure, weather_model, issued_at, available_at, age and lead time. ML receives only the four fields per record required by windpower.input.v1.
 
-```json
-{
-  "turbine_id": "turbine_1",
-  "data_kind": "archived_forecast",
-  "weather_model": "gfs_global",
-  "issued_at": "2026-01-31T06:00:00Z",
-  "available_at": "2026-01-31T14:00:00Z",
-  "source_url": "https://your-archive.example/run-id",
-  "records": []
-}
-```
+Existing snapshots and forecasts are kept readable without conversion; old 100 m records cannot enter new ML inference. Existing imported runs are marked legacy by migration and excluded from selection. Reimport verified JMA 10 m data, not relabelled 100 m values.
 
-Здесь `records` для наглядности пустой; реальный импорт **требует 48–384 последовательных часов**, каждый с target_time, wind_speed, wind_direction, temperature, pressure. Единицы и высоты такие же, как выше. Время выпуска, публикации и модель общие для всего выпуска; поля внутри строк перезаписываются общими значениями. Схема примера: `docs/examples/archived-run-synthetic.json` — только тестовый формат, его значения вымышленные. В нём намеренно стоит `data_kind=synthetic`, поэтому импорт его отклонит. Заполняйте реальными архивными данными, прежде чем указывать `archived_forecast`.
+Weather cache distinguishes schema, turbine, decision time, start, provider, weather model and mode. Archive selection is rerun so a newer available run can be chosen. Explicit refresh refetches weather. Volatile retrieval timestamps/raw response generation metadata do not invalidate unchanged contents within the same window. Prediction cache also requires turbine and fresh loaded model version.
 
-Сначала валидируется весь выпуск; частичного импорта при ошибке нет. Дубликаты идентичного содержимого не создают новых записей. Новый или исправленный выпуск имеет другой hash и не перезаписывает старый. При выборе погодного окна берётся самый новый issued_at среди выпусков с `available_at <= as_of`, который покрывает **все** 48 часов. Если такого нет — 404 archive_not_found, без перехода на фактические значения.
-
-Поле data_kind отклоняет реанализ/наблюдения, но не способно доказать подлинность данных. Поставщик обязан приложить действительный источник и верное время доступности, включая задержку публикации. URL не загружается сервером автоматически. Не выдавайте проверку metadata за независимую проверку оригинального архива.
-
-## Источник 3: demo
-
-Детерминированная синтетическая погода для UI и тестов. provenance.kind=`synthetic`, weather_model=`synthetic-demo`. Любой прогноз мощности с этим источником маркируется is_demo независимо от ML-адаптера. Это не обучающие данные, не метрика и не fallback.
-
-## Почему не другие Open-Meteo API
-
-- Historical Weather: реанализ не заменяет прогноз, доступный в прошлом.
-- Historical Forecast: склеивает начальные часы последовательных запусков, не сохраняет требуемый горизонт одного прошлого решения.
-- Single Runs: точные модельные запуски полезны, но документация обозначает ранний архив ECMWF как **hindcasts**, а большинство остальных моделей доступны только с апреля 2026. Поэтому он не используется как доказанный операционный архив для февраля 2026.
-
-Официальные источники, проверены 23.09.2026: [Previous Runs](https://open-meteo.com/en/docs/previous-runs-api), [Historical Forecast](https://open-meteo.com/en/docs/historical-forecast-api), [Single Runs](https://open-meteo.com/en/docs/single-runs-api). Доступность и условия использования могут меняться. Атрибуция Open-Meteo включена в UI; для коммерческого использования отдельно проверьте условия сервиса.
+`python manage.py import_weather path/to/verified-run.json` imports an exact run. The bundled [synthetic example](examples/archived-run-synthetic.json) deliberately uses data_kind=synthetic and is REJECTED; it demonstrates format, not real archive provenance.

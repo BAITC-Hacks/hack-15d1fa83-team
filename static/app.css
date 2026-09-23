@@ -471,6 +471,11 @@ h3 {
   margin:18px 0 25px;
   flex-wrap:wrap
 }
+.result-actions select { width:auto; }
+.result-actions label { margin:0; }
+#replay-fields { grid-column:1/-1; }
+.source-note.error { background:#f7e6e2; border-color:#d8a497; }
+#capabilities { max-height:340px; white-space:pre-wrap; }
 .secondary {
   border:1px solid #cfd3c5;
   background:transparent;

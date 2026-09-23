@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand
 from forecasting.models import Forecast
-from forecasting.services import execute_forecast
+from forecasting.services import execute_forecast, refresh_request
 
 
 class Command(BaseCommand):
@@ -18,7 +18,7 @@ class Command(BaseCommand):
             if key in seen:
                 continue
             seen.add(key)
-            run = execute_forecast(previous.request_params, refresh=True, previous=previous)
+            run = execute_forecast(refresh_request(previous), refresh=True)
             self.stdout.write(f'{run.pk}: {run.status}; changed={run.snapshot_id != previous.snapshot_id}')
             count += 1
             if count >= opts['limit']:

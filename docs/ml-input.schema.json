@@ -1,17 +1,25 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "ML input v1.0",
+  "$id": "https://arys.example/schemas/ml-input.json",
   "type": "object",
+  "additionalProperties": false,
   "required": [
+    "schema_version",
     "turbine_id",
+    "weather_model",
     "records"
   ],
-  "additionalProperties": false,
   "properties": {
+    "schema_version": {
+      "const": "windpower.input.v1"
+    },
     "turbine_id": {
       "type": "string",
       "minLength": 1,
       "maxLength": 64
+    },
+    "weather_model": {
+      "const": "jma_gsm"
     },
     "records": {
       "type": "array",
@@ -19,55 +27,31 @@
       "maxItems": 48,
       "items": {
         "type": "object",
+        "additionalProperties": false,
         "required": [
           "target_time",
-          "wind_speed",
-          "wind_direction",
-          "temperature",
-          "pressure",
-          "weather_model",
-          "forecast_age_hours"
+          "wind_speed_10m_ms",
+          "wind_direction_10m_deg",
+          "temperature_2m_c"
         ],
-        "additionalProperties": false,
         "properties": {
           "target_time": {
             "type": "string",
             "format": "date-time",
-            "description": "UTC full hour; 48 consecutive timestamps"
+            "description": "Timezone-aware consecutive whole hours; UTC Z preferred."
           },
-          "wind_speed": {
+          "wind_speed_10m_ms": {
+            "type": "number",
+            "minimum": 0
+          },
+          "wind_direction_10m_deg": {
             "type": "number",
             "minimum": 0,
-            "maximum": 150,
-            "description": "m/s at 100 m"
+            "maximum": 360
           },
-          "wind_direction": {
+          "temperature_2m_c": {
             "type": "number",
-            "minimum": 0,
-            "maximum": 360,
-            "description": "meteorological degrees at 100 m"
-          },
-          "temperature": {
-            "type": "number",
-            "minimum": -100,
-            "maximum": 70,
-            "description": "Celsius at 2 m"
-          },
-          "pressure": {
-            "type": "number",
-            "minimum": 300,
-            "maximum": 1100,
-            "description": "surface pressure hPa"
-          },
-          "weather_model": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 160
-          },
-          "forecast_age_hours": {
-            "type": "number",
-            "minimum": 0,
-            "description": "as_of minus issued_at, hours"
+            "minimum": -273.15
           }
         }
       }

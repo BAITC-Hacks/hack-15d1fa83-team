@@ -1,16 +1,35 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "ML output v1.0",
+  "$id": "https://arys.example/schemas/ml-output.json",
   "type": "object",
+  "additionalProperties": false,
   "required": [
+    "schema_version",
+    "turbine_id",
+    "weather_model",
     "model_version",
+    "alignment_confirmed",
     "records"
   ],
   "properties": {
+    "schema_version": {
+      "const": "windpower.output.v1"
+    },
+    "turbine_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "weather_model": {
+      "const": "jma_gsm"
+    },
     "model_version": {
       "type": "string",
       "minLength": 1,
       "maxLength": 160
+    },
+    "alignment_confirmed": {
+      "type": "boolean"
     },
     "records": {
       "type": "array",
@@ -18,6 +37,7 @@
       "maxItems": 48,
       "items": {
         "type": "object",
+        "additionalProperties": false,
         "required": [
           "target_time",
           "predicted_normalized_power"
@@ -26,7 +46,7 @@
           "target_time": {
             "type": "string",
             "format": "date-time",
-            "description": "UTC full hour; 48 consecutive timestamps"
+            "description": "Timezone-aware consecutive whole hours; UTC Z preferred."
           },
           "predicted_normalized_power": {
             "type": "number",

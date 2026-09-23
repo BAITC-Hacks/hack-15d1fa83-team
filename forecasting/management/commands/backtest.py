@@ -13,8 +13,8 @@ class Command(BaseCommand):
         parser.add_argument('--start', default='2026-02-01')
         parser.add_argument('--end', default='2026-02-28')
         parser.add_argument('--provider', choices=['demo', 'open_meteo', 'archive'], default='archive')
-        parser.add_argument('--weather-model', default='gfs_global')
-        parser.add_argument('--turbine', default='turbine_1')
+        parser.add_argument('--weather-model', default='jma_gsm')
+        parser.add_argument('--turbine', default='turbine_2')
         parser.add_argument('--output', default='output/backtest.csv')
 
     def handle(self, *args, **opts):
@@ -28,16 +28,16 @@ class Command(BaseCommand):
         target.parent.mkdir(parents=True, exist_ok=True)
         with target.open('x', newline='', encoding='utf-8') as stream:
             writer = csv.writer(stream)
-            writer.writerow(['forecast_id', 'turbine_id', 'as_of', 'target_time', 'predicted_normalized_power', 'model_version', 'is_demo', 'snapshot_id'])
+            writer.writerow(['forecast_id', 'turbine_id', 'as_of', 'target_time', 'predicted_normalized_power', 'model_version', 'is_demo', 'snapshot_id', 'alignment_confirmed'])
             while day <= end:
                 start = datetime.combine(day, datetime.min.time(), timezone.utc)
                 as_of = start - timedelta(hours=6)
-                run = execute_forecast({'turbine_id': opts['turbine'], 'as_of': iso(as_of), 'start_time': iso(start),
+                run = execute_forecast({'mode': 'replay', 'turbine_id': opts['turbine'], 'as_of': iso(as_of), 'start_time': iso(start),
                     'provider': opts['provider'], 'weather_model': opts['weather_model']})
                 if run.status != 'completed':
                     raise CommandError(f'{day}: {run.error}. Partial results retained at {target}.')
                 for record in run.records:
-                    writer.writerow([str(run.pk), run.turbine_id, iso(as_of), record['target_time'], record['predicted_normalized_power'], run.model_version, run.is_demo, run.snapshot_id])
+                    writer.writerow([str(run.pk), run.turbine_id, iso(as_of), record['target_time'], record['predicted_normalized_power'], run.model_version, run.is_demo, run.snapshot_id, run.alignment_confirmed])
                 self.stdout.write(f'{day}: {run.pk}')
                 day += timedelta(days=1)
         self.stdout.write(self.style.SUCCESS(str(target)))

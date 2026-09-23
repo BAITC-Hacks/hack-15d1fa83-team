@@ -4,12 +4,13 @@ from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
 from django.views.decorators.csrf import ensure_csrf_cookie
-from common.contracts import DomainError, request_window
+from common.contracts import DomainError, WEATHER_MODEL, request_window
 from common.http import api, body
 from weather_archive.models import Turbine, WeatherSnapshot
 from weather_archive.services import get_weather, import_run, serialize as weather_json
 from .models import Forecast
-from .services import execute_forecast, serialize, ml_payload
+from .services import execute_forecast, serialize, ml_payload, refresh_request
+from .ml_client import get_metadata
 
 
 @ensure_csrf_cookie
@@ -22,6 +23,11 @@ def index(request):
 @api()
 def health(request):
     return JsonResponse({'status': 'ok', 'schema_version': '1.0', 'ml_backend': settings.ML_BACKEND})
+
+
+@api()
+def ml_metadata(request):
+    return JsonResponse(get_metadata())
 
 
 @api()
@@ -52,7 +58,7 @@ def forecast_detail(request, pk):
 @api(('POST',))
 def refresh_forecast(request, pk):
     previous = find_run(pk)
-    run = execute_forecast(previous.request_params, refresh=True, previous=previous)
+    run = execute_forecast(refresh_request(previous), refresh=True)
     return JsonResponse(serialize(run), status=201 if run.status == 'completed' else run.error['status'])
 
 
@@ -64,11 +70,11 @@ def export_forecast(request, pk):
     response = HttpResponse(content_type='text/csv; charset=utf-8')
     response['Content-Disposition'] = f'attachment; filename="forecast-{run.pk}.csv"'
     writer = csv.writer(response)
-    writer.writerow(['turbine_id', 'as_of', 'target_time', 'predicted_normalized_power', 'model_version', 'is_demo', 'snapshot_id'])
+    writer.writerow(['turbine_id', 'as_of', 'target_time', 'predicted_normalized_power', 'model_version', 'is_demo', 'snapshot_id', 'alignment_confirmed', 'weather_model'])
     for row in run.records:
         # Prevent spreadsheet formula execution through an external model_version.
         safe = lambda value: "'" + value if str(value).startswith(('=', '+', '-', '@', '\t', '\r')) else value
-        writer.writerow([safe(run.turbine_id), run.as_of.isoformat(), row['target_time'], row['predicted_normalized_power'], safe(run.model_version), run.is_demo, run.snapshot_id])
+        writer.writerow([safe(run.turbine_id), run.as_of.isoformat(), row['target_time'], row['predicted_normalized_power'], safe(run.model_version), run.is_demo, run.snapshot_id, run.alignment_confirmed, safe(run.request_params.get('weather_model', ''))])
     return response
 
 
@@ -76,10 +82,10 @@ def export_forecast(request, pk):
 def weather_forecast(request):
     data = body(request)
     turbine, as_of, start = request_window(data)
-    provider, model = data.get('provider', 'open_meteo'), data.get('weather_model', 'gfs_global')
+    provider, model = data.get('provider', 'open_meteo'), data.get('weather_model', WEATHER_MODEL)
     if not isinstance(provider, str) or not isinstance(model, str):
         raise DomainError('invalid_value', 'provider и weather_model должны быть строками.')
-    return JsonResponse(weather_json(get_weather(turbine, start, as_of, provider, model)))
+    return JsonResponse(weather_json(get_weather(turbine, start, as_of, provider, model, mode=data.get('mode', 'live'))))
 
 
 @api()
