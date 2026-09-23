@@ -1,0 +1,64 @@
+# Remote training with NVIDIA Brev
+
+The supplied credit link belongs to NVIDIA Brev, a GPU-instance service. This is suitable for custom PyTorch training. A billing coupon is not an API credential; this repository does not store or redeem it. Available credit, GPU inventory, permissions and instance cost must be checked in the account.
+
+The workflow is:
+
+1. Prepare the small tabular dataset, or use the assembled CSV and its matching metadata file.
+2. Authenticate the official Brev CLI and select the account's organization.
+3. Start/select a GPU instance in the Brev console. Use a current Python 3.11/3.12 environment with a working CUDA-enabled PyTorch installation, or allow the launcher to install the training extra remotely.
+4. Submit the job from the local PC. Upload, job monitoring and result download use Brev's authenticated CLI.
+5. Download the model and evaluation report, then stop the instance when no longer needed.
+
+The first dense network has only a few thousand parameters; select a modest single GPU rather than defaulting to multiple expensive GPUs. Check the actual current hourly price and remaining credit in Brev before starting an instance. The launcher intentionally does not create or stop instances automatically.
+
+## Authentication and instance selection
+
+Follow the [official quickstart](https://docs.nvidia.com/brev/getting-started/quickstart). On Windows use WSL, as documented by Brev. Your Windows folders are accessible under `/mnt/c/` from WSL.
+
+```bash
+brev login
+brev refresh
+brev list
+brev exec YOUR_INSTANCE "nvidia-smi"
+```
+
+For API-token authentication, use the exact login command shown in your Brev CLI/API-key settings. Keep the token in Brev's credential store, not in source files or training arguments. The local launcher calls the official CLI, which handles the service authentication and SSH configuration. It does not call the hosted NIM inference API.
+
+## Local controller
+
+No PyTorch, CUDA or GPU is needed on the local PC for these commands. Use standard Python and the Brev CLI:
+
+```bash
+# Optional: build and inspect the upload package without remote execution.
+python scripts/brev_train.py submit --instance YOUR_INSTANCE --dataset data/training.csv --prepare-only
+
+# Submit to the selected, already-running GPU instance.
+python scripts/brev_train.py submit --instance YOUR_INSTANCE --dataset data/training.csv --epochs 80
+```
+
+The CSV must be accompanied by `training.metadata.json` from the assembler. Its checksum is verified. Each command creates an isolated local job directory and prints its receipt path. `--prepare-only` does not submit the prepared job; run `submit` without that flag to create and submit a fresh job.
+
+The upload bundle contains only Python package code, package metadata, and the explicitly selected dataset/metadata pair. It does not include `.env`, credentials, billing links, unrelated files or the source turbine CSV. It is sent to the selected GPU instance, not GitHub.
+
+The remote worker creates its own environment, trains with `--device cuda`, records its exit code and bundles outputs. It runs detached so closing the local terminal does not deliberately terminate training. The remote job directory is under `/tmp`; retrieve outputs before rebooting, stopping or deleting the instance. Provider lifecycle behavior varies.
+
+```bash
+python scripts/brev_train.py status --job artifacts/brev-jobs/JOB_ID/job.json
+python scripts/brev_train.py download --job artifacts/brev-jobs/JOB_ID/job.json --output artifacts/brev-results.zip
+python -m zipfile -e artifacts/brev-results.zip .
+```
+
+Download checks that the worker recorded exit code zero. A failed job leaves its log for inspection. Keep the receipt for troubleshooting or reconnecting from another terminal. After a successful download, verify the JSON artifacts and stop the instance if it is no longer serving work:
+
+```bash
+brev stop YOUR_INSTANCE
+```
+
+The result archive contains `artifacts/model.json`, `artifacts/metrics.json` and `artifacts/evaluation_predictions.csv`. Inference can run on an ordinary CPU server using the included container; retaining a GPU solely for this small model's inference is optional.
+
+## What is and is not verified
+
+The package builder, dataset checksum checks, training/export path and service integration are tested locally. The CUDA training path and Brev submission require an authenticated instance; no cloud training or spending has been performed by this draft. First run `nvidia-smi` and a short remote job if you need to check drivers before a longer run.
+
+References: [Brev connectivity](https://docs.nvidia.com/brev/cli/connectivity), [file transfers](https://docs.nvidia.com/brev/guides/development-tools/file-transfer-scp), [GPU instances](https://docs.nvidia.com/brev/concepts/gpu-instances).

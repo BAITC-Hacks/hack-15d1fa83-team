@@ -6,6 +6,7 @@ import hashlib
 import json
 from pathlib import Path
 import random
+import platform
 import numpy as np
 import pandas as pd
 from .dataset import sha256
@@ -94,7 +95,7 @@ def train(dataset, output_dir, device="cuda", epochs=80, batch_size=512, seed=42
         selected = frame.turbine_id == turbine
         curve[selected] = np.interp(frame.loc[selected, "wind_speed_10m_ms"], grouped.index, grouped.to_numpy())
         constant[selected] = subset.target_power.mean()
-    report = {"schema_version": 1, "dataset_metadata": metadata, "device": device, "seed": seed, "best_epoch": best_epoch, "parameter_count": sum(p.numel() for p in model.parameters()), "split_boundaries_utc": {"validation_start": validation_start, "test_start": test_start, "test_end": test_end}, "metrics": {}, "metrics_by_offset": {}, "history": history}
+    report = {"schema_version": 1, "dataset_metadata": metadata, "device": device, "runtime_versions": {"python": platform.python_version(), "numpy": np.__version__, "pandas": pd.__version__, "torch": torch.__version__, "cuda": torch.version.cuda}, "seed": seed, "best_epoch": best_epoch, "parameter_count": sum(p.numel() for p in model.parameters()), "split_boundaries_utc": {"validation_start": validation_start, "test_start": test_start, "test_end": test_end}, "metrics": {}, "metrics_by_offset": {}, "history": history}
     for name, mask in masks.items():
         report["metrics"][name] = {label: metrics(y[mask], pred[mask]) for label, pred in [("neural", predictions), ("constant", constant), ("wind_curve", curve)]}
         report["metrics_by_offset"][name] = {str(offset): metrics(y[mask & (frame.provider_offset_days == offset)], predictions[mask & (frame.provider_offset_days == offset)]) for offset in sorted(frame.loc[mask, "provider_offset_days"].unique())}
