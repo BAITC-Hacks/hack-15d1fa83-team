@@ -60,15 +60,15 @@ def test_resumed_job_downloads_before_stop_and_rerun_does_not_train(tmp_path, mo
     monkeypatch.setattr(auto.worker, "submit", lambda *args: pytest.fail("Must resume, not submit"))
     calls = []
     output = tmp_path / "out"
-    def fake_run(command, **kwargs):
+    def fake_run(command, report, **kwargs):
         calls.append(command[1])
         if command[1] == "copy":
             result_zip(command[-1], digest)
         if command[1] == "stop":
             assert (output / "model.json").exists()
             assert json.loads((output / "complete.json").read_text())["dataset_sha256"] == digest
-        return subprocess.CompletedProcess(command, 0, "WINDPOWER_EXIT=0\n", "")
-    monkeypatch.setattr(auto.subprocess, "run", fake_run)
+        return "WINDPOWER_EXIT=0\n"
+    monkeypatch.setattr(auto, "run_command", fake_run)
     args = argparse.Namespace(instance="wind-training", dataset=str(data), output_dir=str(output), epochs=80, poll_seconds=1, timeout_minutes=1, stop_instance=True)
     auto.run(args)
     assert calls == ["exec", "copy", "stop"]
@@ -87,10 +87,10 @@ def test_failed_job_does_not_download_or_stop(tmp_path, monkeypatch):
     receipt.write_text(json.dumps({"instance": "wind-training", "remote_dir": "/tmp/windpower-0123456789ab"}))
     monkeypatch.setattr(auto, "find_job", lambda *args: receipt)
     calls = []
-    def fake_run(command, **kwargs):
+    def fake_run(command, report, **kwargs):
         calls.append(command[1])
-        return subprocess.CompletedProcess(command, 0, "Training error\nWINDPOWER_EXIT=1\n", "")
-    monkeypatch.setattr(auto.subprocess, "run", fake_run)
+        return "Training error\nWINDPOWER_EXIT=1\n"
+    monkeypatch.setattr(auto, "run_command", fake_run)
     args = argparse.Namespace(instance="wind-training", dataset=str(data), output_dir=str(tmp_path / "out"), epochs=80, poll_seconds=1, timeout_minutes=1, stop_instance=True)
     with pytest.raises(RuntimeError, match="Training failed"):
         auto.run(args)
@@ -105,3 +105,91 @@ def test_incomplete_submission_is_not_automatically_duplicated(tmp_path):
         archive.writestr("data/training.metadata.json", json.dumps({"dataset_sha256": "correct"}))
     with pytest.raises(RuntimeError, match="interrupted"):
         auto.find_job([tmp_path], "wind-training", 80, "correct")
+
+
+def test_legacy_lock_removed_only_after_no_controller_found(tmp_path, monkeypatch):
+    legacy = tmp_path / 'automation.lock'
+    legacy.touch()
+    monkeypatch.setattr(auto, 'legacy_controllers', lambda output: [123])
+    with pytest.raises(RuntimeError, match='older training window is still active'):
+        with auto.controller_lock(tmp_path):
+            pytest.fail('Must not enter while old controller is alive')
+    assert legacy.exists()
+    monkeypatch.setattr(auto, 'legacy_controllers', lambda output: [])
+    with auto.controller_lock(tmp_path):
+        assert not legacy.exists()
+    # The persistent guard pathname is harmless on subsequent launches.
+    with auto.controller_lock(tmp_path):
+        pass
+
+
+def test_lock_excludes_other_process_and_releases_after_crash(tmp_path):
+    program = (
+        'import sys,time; from pathlib import Path; '
+        'sys.path.insert(0,sys.argv[1]); import auto_train; '
+        'lock=auto_train.controller_lock(Path(sys.argv[2])); '
+        'lock.__enter__(); print("locked",flush=True); time.sleep(30)'
+    )
+    child = subprocess.Popen([sys._base_executable, '-c', program, str(SCRIPTS), str(tmp_path)],
+                             stdout=subprocess.PIPE, text=True)
+    try:
+        assert child.stdout.readline().strip() == 'locked'
+        with pytest.raises(RuntimeError, match='already controlled'):
+            with auto.controller_lock(tmp_path):
+                pytest.fail('Duplicate controller acquired guard')
+    finally:
+        child.kill()
+        child.wait(timeout=5)
+        child.stdout.close()
+    with auto.controller_lock(tmp_path):
+        pass
+
+
+def test_command_timeout_is_bounded_and_preserves_output():
+    messages = []
+    with pytest.raises(subprocess.TimeoutExpired):
+        auto.run_command([sys._base_executable, '-c',
+            'import time; print("starting GPU",flush=True); time.sleep(30)'], messages.append, timeout=0.5)
+    assert any('starting GPU' in line for line in messages)
+    assert auto.run_command([sys._base_executable, '-c', 'print("ready")'], messages.append).strip() == 'ready'
+
+
+def test_detached_start_timeout_checks_state_and_resumes_receipt(tmp_path, monkeypatch):
+    data = tmp_path / 'training.csv'
+    data.write_text('example')
+    digest = auto.hashlib.sha256(data.read_bytes()).hexdigest()
+    data.with_suffix('.metadata.json').write_text(json.dumps({'dataset_sha256': digest}))
+    receipt = tmp_path / 'job.json'
+    receipt.write_text(json.dumps({'instance': 'wind-training', 'remote_dir': '/tmp/windpower-0123456789ab'}))
+    monkeypatch.setattr(auto, 'find_job', lambda *args: receipt)
+    monkeypatch.setattr(auto.worker, 'submit', lambda *args: pytest.fail('Must resume receipt'))
+    calls = []
+    def fake_run(command, report, **kwargs):
+        calls.append(command[1:])
+        if command[1] == 'list':
+            return 'wind-training ' + ('STOPPED' if len(calls) == 1 else 'STARTING')
+        if command[1] == 'start':
+            assert command == ['brev', 'start', 'wind-training', '--detached']
+            raise subprocess.TimeoutExpired(command, 300)
+        if command[1] == 'copy':
+            result_zip(command[-1], digest)
+        return 'WINDPOWER_EXIT=0\n'
+    monkeypatch.setattr(auto, 'run_command', fake_run)
+    auto.run(argparse.Namespace(instance='wind-training', dataset=str(data),
+        output_dir=str(tmp_path / 'out'), epochs=80, poll_seconds=1,
+        timeout_minutes=1, stop_instance=True, start_instance=True))
+    assert [call[0] for call in calls] == ['list', 'start', 'list', 'refresh', 'exec', 'copy', 'stop']
+
+
+def test_legacy_scan_matches_output_folder(tmp_path, monkeypatch):
+    proc = tmp_path / 'proc'
+    proc.mkdir()
+    output = tmp_path / 'results'
+    # Use synthetic /proc entries to exercise argument parsing on Windows too.
+    monkeypatch.setattr(auto.os, 'getuid', lambda: (proc.stat().st_uid), raising=False)
+    for pid, target in [(1, str(output)), (2, str(tmp_path / 'different'))]:
+        entry = proc / str(pid + 900000)
+        entry.mkdir()
+        entry.joinpath('cmdline').write_bytes(
+            ('python3\0scripts/auto_train.py\0--output-dir\0' + target + '\0').encode())
+    assert auto.legacy_controllers(output, proc) == [900001]

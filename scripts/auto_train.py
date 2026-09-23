@@ -3,18 +3,120 @@
 Uses the existing Brev login. Does not create instances or install local ML packages.
 """
 import argparse
+from contextlib import contextmanager
 import hashlib
 import json
 import os
 from pathlib import Path
 import re
 import shlex
+import signal
 import subprocess
 import sys
 import time
+import tempfile
 import zipfile
 
 import brev_train as worker
+
+
+def legacy_controllers(output, proc_root=Path('/proc')):
+    """Identify old controllers before retiring their existence-only lock.
+
+    Old versions hold no OS lock. Never infer their death from a timestamp.
+    This migration is intentionally limited to Linux, where the launcher runs.
+    """
+    if not proc_root.is_dir():
+        raise RuntimeError("An old launcher lock needs checking from WSL; run the Windows training launcher.")
+    found = []
+    for entry in proc_root.iterdir():
+        if not entry.name.isdigit() or int(entry.name) == os.getpid():
+            continue
+        try:
+            if entry.stat().st_uid != os.getuid():
+                continue
+            argv = entry.joinpath('cmdline').read_bytes().decode(errors='replace').split('\0')
+            if not any(Path(arg).name == 'auto_train.py' for arg in argv):
+                continue
+            value = next((arg.split('=', 1)[1] for arg in argv if arg.startswith('--output-dir=')), None)
+            if '--output-dir' in argv:
+                value = argv[argv.index('--output-dir') + 1]
+            if not value:
+                raise RuntimeError("Cannot identify an older training window; close it before retrying.")
+            target = Path(value)
+            if not target.is_absolute():
+                target = entry.joinpath('cwd').resolve(strict=True) / target
+            if target.resolve() == output.resolve():
+                found.append(int(entry.name))
+        except (FileNotFoundError, ProcessLookupError):
+            continue  # Process exited during inspection.
+    return found
+
+
+@contextmanager
+def controller_lock(output):
+    # Never unlink the guard: replacing its inode could permit two owners.
+    # The OS releases the lock even when a terminal closes or Python crashes.
+    guard = (output / 'automation.guard').open('a+b')
+    try:
+        if guard.seek(0, os.SEEK_END) == 0:
+            guard.write(b'0'); guard.flush()
+        guard.seek(0)
+        try:
+            if os.name == 'nt':
+                import msvcrt
+                msvcrt.locking(guard.fileno(), msvcrt.LK_NBLCK, 1)
+            else:
+                import fcntl
+                fcntl.flock(guard.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError as error:
+            raise RuntimeError("Training is already controlled by another window. Keep that window open; no duplicate job was started.") from error
+        legacy = output / 'automation.lock'
+        if legacy.exists():
+            owners = legacy_controllers(output)
+            if owners:
+                raise RuntimeError("An older training window is still active (PID " + ', '.join(map(str, owners)) + "). Close that old training window, then reopen this launcher. No duplicate job was started.")
+            legacy.unlink()
+        yield
+    finally:
+        guard.close()
+
+
+def run_command(command, report, timeout=300):
+    """Bound local CLI waits without pipes that descendants can keep open."""
+    with tempfile.TemporaryFile() as captured:
+        process = subprocess.Popen(command, stdin=subprocess.DEVNULL,
+            stdout=captured, stderr=subprocess.STDOUT, start_new_session=os.name != 'nt')
+        deadline = time.monotonic() + timeout
+        try:
+            while True:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise subprocess.TimeoutExpired(command, timeout)
+                try:
+                    process.wait(timeout=min(30, remaining))
+                    break
+                except subprocess.TimeoutExpired:
+                    report('Still waiting for ' + ' '.join(command[:2]) + '...')
+        except BaseException:
+            if os.name != 'nt':
+                try:
+                    os.killpg(process.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+            else:
+                process.kill()
+            process.wait(timeout=10)
+            captured.seek(0)
+            detail = captured.read().decode(errors='replace').strip()
+            if detail:
+                report(detail[-6000:])
+            raise
+        captured.seek(0)
+        combined = captured.read().decode(errors='replace')
+        if process.returncode:
+            raise RuntimeError(combined[-6000:] or 'Brev command failed')
+        return combined
 
 
 def remote_status(text):
@@ -87,10 +189,11 @@ def run(args):
         raise ValueError("Dataset checksum mismatch")
     output = Path(args.output_dir).resolve()
     output.mkdir(parents=True, exist_ok=True)
-    lock = output / "automation.lock"
-    # Never automatically break a lock: a second controller could start a duplicate job.
-    descriptor = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
-    os.close(descriptor)
+    with controller_lock(output):
+        return run_locked(args, dataset, dataset_sha, output)
+
+
+def run_locked(args, dataset, dataset_sha, output):
     log = (output / "progress.log").open("a", encoding="utf-8")
 
     def report(message):
@@ -99,12 +202,7 @@ def run(args):
         log.write(line + "\n"); log.flush()
 
     def brev(arguments):
-        result = subprocess.run(["brev", *arguments], capture_output=True, text=True,
-                                errors="replace", timeout=300)
-        combined = result.stdout + result.stderr
-        if result.returncode:
-            raise RuntimeError(combined[-6000:] or "Brev command failed")
-        return combined
+        return run_command(["brev", *arguments], report)
 
     try:
         report("Checking existing jobs. Keep this window open; no commands are needed.")
@@ -127,7 +225,15 @@ def run(args):
             state = instance_state(brev(["list"]), args.instance)
             if state == "STOPPED":
                 report("Starting the existing GPU instance; compute billing will resume.")
-                brev(["start", args.instance])
+                try:
+                    report(brev(["start", args.instance, "--detached"]).strip())
+                except subprocess.TimeoutExpired:
+                    # A timed-out client may already have started the instance.
+                    # Read current state; do not blindly repeat the mutation.
+                    state = instance_state(brev(["list"]), args.instance)
+                    if state not in ("RUNNING", "STARTING"):
+                        raise RuntimeError("GPU startup timed out; current state is " + state)
+                    report("GPU startup was accepted. Waiting for remote access.")
                 brev(["refresh"])
             elif state not in ("RUNNING", "STARTING"):
                 raise RuntimeError("Instance is in state " + state + "; inspect it in Brev")
@@ -201,7 +307,6 @@ def run(args):
         raise
     finally:
         log.close()
-        lock.unlink()
 
 
 def main():

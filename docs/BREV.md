@@ -10,7 +10,7 @@ The workflow is:
 4. Submit the job from the local PC. Upload, job monitoring and result download use Brev's authenticated CLI.
 5. Download the model and evaluation report, then stop the instance when no longer needed.
 
-The first dense network has only a few thousand parameters; select a modest single GPU rather than defaulting to multiple expensive GPUs. Check the actual current hourly price and remaining credit in Brev before starting an instance. The launcher intentionally does not create or stop instances automatically.
+The first dense network has only a few thousand parameters; select a modest single GPU rather than defaulting to multiple expensive GPUs. Check the actual current hourly price and remaining credit in Brev before starting an instance. The basic submission command does not manage instance lifetime; the automated controller supports explicit start/stop options for an existing instance.
 
 ## Authentication and instance selection
 
@@ -35,7 +35,11 @@ With an authenticated Brev CLI and an existing running GPU, this standard-librar
 python3 scripts/auto_train.py --instance YOUR_INSTANCE --dataset data/training.csv --output-dir artifacts/full-run --epochs 80 --stop-instance
 ```
 
-Keep its terminal open. Progress is also saved to `progress.log` in the output directory. A repeat invocation reuses a matching 80-epoch receipt from the output directory or `artifacts/brev-jobs`, and completed runs are not resubmitted. An interrupted submission or existing controller lock requires inspection rather than automatically risking a second billable job. Monitoring times out after 90 minutes by default; a later invocation can resume a submitted job. On failure the controller reports the error and leaves the GPU available for diagnosis; check its state before leaving it idle. On success it downloads results before invoking `brev stop` when requested. No cloud instances are created by this controller.
+Keep its terminal open. Progress is also saved to `progress.log` in the output directory. A repeat invocation reuses a matching 80-epoch receipt from the output directory or `artifacts/brev-jobs`, and completed runs are not resubmitted. An interrupted submission requires inspection rather than automatically risking a second billable job. Monitoring times out after 90 minutes by default; a later invocation can resume a submitted job. On failure the controller reports the error and leaves the GPU available for diagnosis; check its state before leaving it idle. On success it downloads results before invoking `brev stop` when requested. No cloud instances are created by this controller.
+
+The controller holds an operating-system lock on `automation.guard`. The file stays in place; its existence does not block relaunching, and the OS releases ownership when the controller exits or crashes. Do not delete it while a controller is running. For migration from the old empty `automation.lock`, the WSL launcher inspects local processes and removes the legacy file only when no matching controller is alive. If it reports an older active training window, close that old window and reopen the launcher. This does not intentionally cancel detached remote training; a submitted receipt is resumed. Never delete job receipts to bypass an interrupted-submission warning.
+
+Startup uses the documented [`brev start INSTANCE --detached`](https://docs.nvidia.com/brev/cli/instance-management) option, then refreshes SSH configuration and checks GPU access. CLI status/start/stop calls have bounded waits, emit a waiting message every 30 seconds, and preserve diagnostic output on failure. If the start command times out, the controller checks the instance's fresh state before proceeding rather than blindly repeating startup. Live WSL verification is still required for this recovery change.
 
 If the worker reports that `ensurepip` is unavailable, install its matching virtual-environment package remotely before submitting. For the observed Python 3.12 Ubuntu worker:
 
