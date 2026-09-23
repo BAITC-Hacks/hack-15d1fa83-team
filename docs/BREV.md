@@ -83,6 +83,6 @@ The result archive contains `artifacts/model.json`, `artifacts/metrics.json` and
 
 ## What is and is not verified
 
-The package builder, dataset checksum checks, training/export path and service integration are tested locally. The CUDA training path and Brev submission require an authenticated instance; no cloud training or spending has been performed by this draft. First run `nvidia-smi` and a short remote job if you need to check drivers before a longer run.
+Real CUDA training, submission, monitoring, result verification/download and instance stop completed for the joint model. See models/production/ and the bilingual training_toolkit documentation. Authentication is still required for future Brev runs. The detached stopped-instance startup path remains separately unverified.
 
 References: [Brev connectivity](https://docs.nvidia.com/brev/cli/connectivity), [file transfers](https://docs.nvidia.com/brev/guides/development-tools/file-transfer-scp), [GPU instances](https://docs.nvidia.com/brev/concepts/gpu-instances).

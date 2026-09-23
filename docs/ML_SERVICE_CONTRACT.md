@@ -24,20 +24,20 @@ ML_SERVICE_TOKEN=YOUR_SHARED_SERVICE_TOKEN
 
 `MODEL_HOST` must be reachable from Django. `127.0.0.1` works only when services share that network namespace; containers generally use a service DNS name. Set the same `ML_SERVICE_TOKEN` in the model service. When configured, it requires `Authorization: Bearer <token>` on `/v1/predict`, `/v1/metadata` and the convenience prediction endpoint. The token is a team-chosen service credential, not a Brev/NVIDIA API key. Omit it on both sides only for a local development service. `GET /health` is unauthenticated.
 
-Run the model service after placing the downloaded weights at `artifacts/model.json`:
+Run the model service with the committed weights at `models/production/model.json`:
 
 ```bash
-export MODEL_PATH=artifacts/model.json
+export MODEL_PATH=models/production/model.json
 export ALLOW_PROVISIONAL_MODEL=1
 # Supply ML_SERVICE_TOKEN through your deployment's environment or secret manager.
 uvicorn windpower.api:app --host 0.0.0.0 --port 8000
 ```
 
-Current artifacts have unconfirmed measurement interval alignment, so the explicit provisional flag is necessary and the response reports `alignment_confirmed: false`. Display that limitation in the UI. Confirm/retrain before removing the flag. `WEATHER_PROVIDER_URL` is not needed for direct inference. A missing, invalid or disallowed model prevents startup. Models load once: restart the service after replacing the artifact. No weights are included in Git.
+Current artifacts have unconfirmed measurement interval alignment, so the explicit provisional flag is necessary and the response reports `alignment_confirmed: false`. Display that limitation in the UI. Confirm/retrain before removing the flag. `WEATHER_PROVIDER_URL` is not needed for direct inference. A missing, invalid or disallowed model prevents startup. Models load once: restart the service after replacing the artifact. The selected joint weights and their hash manifest are committed in models/production/.
 
 ## Capability discovery
 
-Before selecting a source, call authenticated `GET /v1/metadata`. It returns the exact loaded `model_version`, `supported_turbines`, `supported_weather_models`, field definitions, turbine coordinates, `required_records: 48`, schema versions and alignment status. Existing baseline weights support only turbine 2. Joint weights must actually be deployed before turbine 1 appears; there is no fallback.
+Before selecting a source, call authenticated `GET /v1/metadata`. It returns the exact loaded `model_version`, `supported_turbines`, `supported_weather_models`, field definitions, turbine coordinates, `required_records: 48`, schema versions and alignment status. The committed joint model mlp-76540e5972a6 supports both turbines. Metadata reports the artifact actually loaded; there is no fallback.
 
 Current source: **`jma_gsm`**, with 10 m wind and 2 m temperature. Training and inference must use the same provider, height, units and grid/downscaling settings. Request Open-Meteo variables `wind_speed_10m,wind_direction_10m,temperature_2m`, `models=jma_gsm`, `wind_speed_unit=ms`, `temperature_unit=celsius`, `timezone=UTC`. Changing to GFS/ICON/ECMWF requires an appropriately trained/evaluated artifact; do not relabel another source as JMA. The transport schema can remain v1 for a future source using the same physical field definitions.
 

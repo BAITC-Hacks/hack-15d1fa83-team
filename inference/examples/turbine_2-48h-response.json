@@ -1,0 +1,201 @@
+{
+  "schema_version": "windpower.output.v1",
+  "turbine_id": "turbine_2",
+  "weather_model": "jma_gsm",
+  "model_version": "mlp-76540e5972a6",
+  "alignment_confirmed": false,
+  "records": [
+    {
+      "target_time": "2026-01-01T00:00:00Z",
+      "predicted_normalized_power": 0.9496269226074219
+    },
+    {
+      "target_time": "2026-01-01T01:00:00Z",
+      "predicted_normalized_power": 0.925570547580719
+    },
+    {
+      "target_time": "2026-01-01T02:00:00Z",
+      "predicted_normalized_power": 0.8710108399391174
+    },
+    {
+      "target_time": "2026-01-01T03:00:00Z",
+      "predicted_normalized_power": 0.8012964129447937
+    },
+    {
+      "target_time": "2026-01-01T04:00:00Z",
+      "predicted_normalized_power": 0.689832866191864
+    },
+    {
+      "target_time": "2026-01-01T05:00:00Z",
+      "predicted_normalized_power": 0.5260845422744751
+    },
+    {
+      "target_time": "2026-01-01T06:00:00Z",
+      "predicted_normalized_power": 0.26582711935043335
+    },
+    {
+      "target_time": "2026-01-01T07:00:00Z",
+      "predicted_normalized_power": 0.1552383303642273
+    },
+    {
+      "target_time": "2026-01-01T08:00:00Z",
+      "predicted_normalized_power": 0.09460088610649109
+    },
+    {
+      "target_time": "2026-01-01T09:00:00Z",
+      "predicted_normalized_power": 0.07329796999692917
+    },
+    {
+      "target_time": "2026-01-01T10:00:00Z",
+      "predicted_normalized_power": 0.10800357162952423
+    },
+    {
+      "target_time": "2026-01-01T11:00:00Z",
+      "predicted_normalized_power": 0.15851157903671265
+    },
+    {
+      "target_time": "2026-01-01T12:00:00Z",
+      "predicted_normalized_power": 0.2101728767156601
+    },
+    {
+      "target_time": "2026-01-01T13:00:00Z",
+      "predicted_normalized_power": 0.18775735795497894
+    },
+    {
+      "target_time": "2026-01-01T14:00:00Z",
+      "predicted_normalized_power": 0.17826493084430695
+    },
+    {
+      "target_time": "2026-01-01T15:00:00Z",
+      "predicted_normalized_power": 0.17544133961200714
+    },
+    {
+      "target_time": "2026-01-01T16:00:00Z",
+      "predicted_normalized_power": 0.13184620440006256
+    },
+    {
+      "target_time": "2026-01-01T17:00:00Z",
+      "predicted_normalized_power": 0.117200568318367
+    },
+    {
+      "target_time": "2026-01-01T18:00:00Z",
+      "predicted_normalized_power": 0.1378004550933838
+    },
+    {
+      "target_time": "2026-01-01T19:00:00Z",
+      "predicted_normalized_power": 0.14256177842617035
+    },
+    {
+      "target_time": "2026-01-01T20:00:00Z",
+      "predicted_normalized_power": 0.12709948420524597
+    },
+    {
+      "target_time": "2026-01-01T21:00:00Z",
+      "predicted_normalized_power": 0.11615496873855591
+    },
+    {
+      "target_time": "2026-01-01T22:00:00Z",
+      "predicted_normalized_power": 0.09640783816576004
+    },
+    {
+      "target_time": "2026-01-01T23:00:00Z",
+      "predicted_normalized_power": 0.09380663186311722
+    },
+    {
+      "target_time": "2026-01-02T00:00:00Z",
+      "predicted_normalized_power": 0.08378705382347107
+    },
+    {
+      "target_time": "2026-01-02T01:00:00Z",
+      "predicted_normalized_power": 0.07443550229072571
+    },
+    {
+      "target_time": "2026-01-02T02:00:00Z",
+      "predicted_normalized_power": 0.07547471672296524
+    },
+    {
+      "target_time": "2026-01-02T03:00:00Z",
+      "predicted_normalized_power": 0.07580623775720596
+    },
+    {
+      "target_time": "2026-01-02T04:00:00Z",
+      "predicted_normalized_power": 0.09986863285303116
+    },
+    {
+      "target_time": "2026-01-02T05:00:00Z",
+      "predicted_normalized_power": 0.14335326850414276
+    },
+    {
+      "target_time": "2026-01-02T06:00:00Z",
+      "predicted_normalized_power": 0.19724474847316742
+    },
+    {
+      "target_time": "2026-01-02T07:00:00Z",
+      "predicted_normalized_power": 0.2345096468925476
+    },
+    {
+      "target_time": "2026-01-02T08:00:00Z",
+      "predicted_normalized_power": 0.2846505641937256
+    },
+    {
+      "target_time": "2026-01-02T09:00:00Z",
+      "predicted_normalized_power": 0.2870407998561859
+    },
+    {
+      "target_time": "2026-01-02T10:00:00Z",
+      "predicted_normalized_power": 0.26381877064704895
+    },
+    {
+      "target_time": "2026-01-02T11:00:00Z",
+      "predicted_normalized_power": 0.2437620311975479
+    },
+    {
+      "target_time": "2026-01-02T12:00:00Z",
+      "predicted_normalized_power": 0.18554343283176422
+    },
+    {
+      "target_time": "2026-01-02T13:00:00Z",
+      "predicted_normalized_power": 0.1532135307788849
+    },
+    {
+      "target_time": "2026-01-02T14:00:00Z",
+      "predicted_normalized_power": 0.15488497912883759
+    },
+    {
+      "target_time": "2026-01-02T15:00:00Z",
+      "predicted_normalized_power": 0.1677253693342209
+    },
+    {
+      "target_time": "2026-01-02T16:00:00Z",
+      "predicted_normalized_power": 0.15844397246837616
+    },
+    {
+      "target_time": "2026-01-02T17:00:00Z",
+      "predicted_normalized_power": 0.15846718847751617
+    },
+    {
+      "target_time": "2026-01-02T18:00:00Z",
+      "predicted_normalized_power": 0.1350320726633072
+    },
+    {
+      "target_time": "2026-01-02T19:00:00Z",
+      "predicted_normalized_power": 0.127080038189888
+    },
+    {
+      "target_time": "2026-01-02T20:00:00Z",
+      "predicted_normalized_power": 0.11946399509906769
+    },
+    {
+      "target_time": "2026-01-02T21:00:00Z",
+      "predicted_normalized_power": 0.12226443737745285
+    },
+    {
+      "target_time": "2026-01-02T22:00:00Z",
+      "predicted_normalized_power": 0.1560104638338089
+    },
+    {
+      "target_time": "2026-01-02T23:00:00Z",
+      "predicted_normalized_power": 0.15686337649822235
+    }
+  ]
+}

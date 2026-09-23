@@ -77,7 +77,7 @@ async def fetch_weather(client, url, token, request):
     raise ProviderError("Weather provider unavailable")
 
 def create_app(model_path=None, provider_url=None, allow_provisional=None, allow_historical=None, transport=None, service_token=None):
-    path = Path(model_path or os.getenv("MODEL_PATH", "artifacts/model.json"))
+    path = Path(model_path or os.getenv("MODEL_PATH", "models/production/model.json"))
     url = provider_url or os.getenv("WEATHER_PROVIDER_URL", "")
     provisional = allow_provisional if allow_provisional is not None else os.getenv("ALLOW_PROVISIONAL_MODEL", "0") == "1"
     historical = allow_historical if allow_historical is not None else os.getenv("ALLOW_HISTORICAL_FORECASTS", "0") == "1"

@@ -1,0 +1,30 @@
+{
+  "model_version": "mlp-76540e5972a6",
+  "checks": [
+    "turbine_1: reference parity, repeatability, invalid horizon/source rejection, authentication",
+    "turbine_2: reference parity, repeatability, invalid horizon/source rejection, authentication"
+  ],
+  "runtime_environment": "Fresh Python 3.12 venv, pinned runtime dependencies and installed project wheel",
+  "torch_installed": false,
+  "catboost_installed": false,
+  "transport": "Real loopback TCP HTTP with Uvicorn",
+  "shared_token_enabled": true,
+  "tests_passed": 62,
+  "docker_verification": "Not executed: Docker engine unavailable in this session",
+  "teammate_django_integration": "Pending",
+  "source_model": "models/production/model.json",
+  "runtime_pip_check": "No broken requirements found",
+  "toolkit_verification": {
+    "help_commands": [
+      "fetch",
+      "assemble",
+      "train",
+      "auto",
+      "brev",
+      "benchmark",
+      "verify"
+    ],
+    "bundle_prepare_only": "Success with real joint dataset using runtime-only Python; no Brev command executed",
+    "bilingual_readme_links": "All local Markdown links and code-fence pairs checked"
+  }
+}
