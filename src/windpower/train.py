@@ -96,9 +96,21 @@ def train(dataset, output_dir, device="cuda", epochs=80, batch_size=512, seed=42
         curve[selected] = np.interp(frame.loc[selected, "wind_speed_10m_ms"], grouped.index, grouped.to_numpy())
         constant[selected] = subset.target_power.mean()
     report = {"schema_version": 1, "dataset_metadata": metadata, "device": device, "runtime_versions": {"python": platform.python_version(), "numpy": np.__version__, "pandas": pd.__version__, "torch": torch.__version__, "cuda": torch.version.cuda}, "seed": seed, "best_epoch": best_epoch, "parameter_count": sum(p.numel() for p in model.parameters()), "split_boundaries_utc": {"validation_start": validation_start, "test_start": test_start, "test_end": test_end}, "metrics": {}, "metrics_by_offset": {}, "history": history}
+    report["metrics_by_turbine"] = {}
     for name, mask in masks.items():
         report["metrics"][name] = {label: metrics(y[mask], pred[mask]) for label, pred in [("neural", predictions), ("constant", constant), ("wind_curve", curve)]}
         report["metrics_by_offset"][name] = {str(offset): metrics(y[mask & (frame.provider_offset_days == offset)], predictions[mask & (frame.provider_offset_days == offset)]) for offset in sorted(frame.loc[mask, "provider_offset_days"].unique())}
+        report["metrics_by_turbine"][name] = {}
+        for turbine in turbines:
+            selected = mask & frame.turbine_id.eq(turbine)
+            if not selected.any():
+                report["metrics_by_turbine"][name][turbine] = {"rows": 0, "status": "no_data"}
+                continue
+            report["metrics_by_turbine"][name][turbine] = {
+                "unique_target_hours": int(frame.loc[selected, "valid_time_utc"].nunique()),
+                "models": {label: metrics(y[selected], pred[selected]) for label, pred in [("neural", predictions), ("constant", constant), ("wind_curve", curve)]},
+                "neural_by_offset": {str(offset): metrics(y[selected & frame.provider_offset_days.eq(offset)], predictions[selected & frame.provider_offset_days.eq(offset)]) for offset in sorted(frame.loc[selected, "provider_offset_days"].unique())},
+            }
     layers = [{"weight": layer.weight.detach().cpu().tolist(), "bias": layer.bias.detach().cpu().tolist()} for layer in model if isinstance(layer, nn.Linear)]
     version = "mlp-" + hashlib.sha256(json.dumps(layers, sort_keys=True).encode()).hexdigest()[:12]
     bundle = {"schema_version": 1, "architecture": "mlp_relu_sigmoid", "model_version": version, "created_at_utc": dt.datetime.now(dt.timezone.utc).isoformat(), "weather_model": metadata["weather_model"], "turbines": turbines, "feature_names": BASE_FEATURES + ["turbine:" + t for t in turbines], "mean": mean.tolist(), "scale": scale.tolist(), "layers": layers, "dataset_metadata": metadata, "training_seed": seed, "best_epoch": best_epoch}
@@ -111,7 +123,9 @@ def train(dataset, output_dir, device="cuda", epochs=80, batch_size=512, seed=42
     # Check portable inference against the trained framework before exporting as usable.
     from .model import Predictor
     portable = Predictor(out / "model.json", allow_provisional=True)
-    np.testing.assert_allclose(portable.predict(frame.iloc[:128], metadata["weather_model"]), predictions[:128], atol=2e-6, rtol=1e-5)
+    for turbine in turbines:
+        indices = np.flatnonzero(frame.turbine_id.eq(turbine))[:128]
+        np.testing.assert_allclose(portable.predict(frame.iloc[indices], metadata["weather_model"]), predictions[indices], atol=2e-6, rtol=1e-5)
     print(json.dumps({"model_version": version, "test": report["metrics"]["test"]}), flush=True)
     return report
 

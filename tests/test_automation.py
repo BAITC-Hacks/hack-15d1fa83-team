@@ -43,6 +43,12 @@ def test_exit_marker_is_not_confused_by_log_text():
     assert auto.remote_status("still training\n") is None
 
 
+def test_instance_start_requires_an_existing_exact_name():
+    assert auto.instance_state(" NAME STATUS\n wind-training STOPPED READY\n", "wind-training") == "STOPPED"
+    with pytest.raises(ValueError, match="refusing to create"):
+        auto.instance_state("wind-training-other STOPPED", "wind-training")
+
+
 def test_resumed_job_downloads_before_stop_and_rerun_does_not_train(tmp_path, monkeypatch):
     data = tmp_path / "training.csv"
     data.write_text("example")

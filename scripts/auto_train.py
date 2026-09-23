@@ -22,6 +22,14 @@ def remote_status(text):
     return int(matches[-1]) if matches else None
 
 
+def instance_state(listing, instance):
+    listing = re.sub(r"\x1b\[[0-9;]*m", "", listing)
+    match = re.search(r"^\s*" + re.escape(instance) + r"\s+([A-Z]+)\b", listing, re.MULTILINE)
+    if not match:
+        raise ValueError("Selected instance is not in Brev's instance list; refusing to create a new one")
+    return match.group(1)
+
+
 def verify_results(archive_path, dataset_sha):
     """Read only the three expected members; never extract arbitrary ZIP paths."""
     with zipfile.ZipFile(archive_path) as archive:
@@ -115,9 +123,26 @@ def run(args):
                 completed.write_text(json.dumps(saved, indent=2))
             report("Already complete. Results are saved here: " + str(output))
             return
+        if getattr(args, "start_instance", False):
+            state = instance_state(brev(["list"]), args.instance)
+            if state == "STOPPED":
+                report("Starting the existing GPU instance; compute billing will resume.")
+                brev(["start", args.instance])
+                brev(["refresh"])
+            elif state not in ("RUNNING", "STARTING"):
+                raise RuntimeError("Instance is in state " + state + "; inspect it in Brev")
         if receipt is None:
             report("Checking remote GPU access.")
-            brev(["exec", args.instance, "nvidia-smi"])
+            ready_deadline = time.monotonic() + 600
+            while True:
+                try:
+                    brev(["exec", args.instance, "nvidia-smi"])
+                    break
+                except (RuntimeError, subprocess.TimeoutExpired):
+                    if time.monotonic() >= ready_deadline:
+                        raise
+                    report("GPU SSH is not ready yet; checking again shortly.")
+                    time.sleep(15)
             report("Submitting full training job.")
             worker.submit(argparse.Namespace(instance=args.instance, dataset=str(dataset),
                 epochs=args.epochs, job_dir=str(output / "jobs"), prepare_only=False))
@@ -188,6 +213,7 @@ def main():
     parser.add_argument("--poll-seconds", type=int, default=30)
     parser.add_argument("--timeout-minutes", type=int, default=90)
     parser.add_argument("--stop-instance", action="store_true")
+    parser.add_argument("--start-instance", action="store_true", help="Start the selected existing stopped instance (resumes billing)")
     try:
         run(parser.parse_args())
     except Exception as error:

@@ -45,6 +45,8 @@ brev exec YOUR_INSTANCE "sudo apt-get update && sudo apt-get install -y --no-ins
 
 ### Manual commands
 
+Add `--start-instance` to the automated command to start the selected existing stopped instance. This resumes compute billing. The controller requires the exact name in `brev list`, refuses unknown instances, and waits for GPU SSH readiness before creating a job. Completed results are checked before startup, so reopening a finished run does not restart its GPU. Use separate output directories for different datasets.
+
 No PyTorch, CUDA or GPU is needed on the local PC for these commands. Use standard Python and the Brev CLI:
 
 ```bash
