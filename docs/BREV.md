@@ -27,6 +27,24 @@ For API-token authentication, use the exact login command shown in your Brev CLI
 
 ## Local controller
 
+### Automated training and retrieval
+
+With an authenticated Brev CLI and an existing running GPU, this standard-library controller submits once, polls every 30 seconds, downloads and verifies the dataset identity and CUDA metadata in the result archive, saves the three model artifacts, and optionally stops the selected instance:
+
+```bash
+python3 scripts/auto_train.py --instance YOUR_INSTANCE --dataset data/training.csv --output-dir artifacts/full-run --epochs 80 --stop-instance
+```
+
+Keep its terminal open. Progress is also saved to `progress.log` in the output directory. A repeat invocation reuses a matching 80-epoch receipt from the output directory or `artifacts/brev-jobs`, and completed runs are not resubmitted. An interrupted submission or existing controller lock requires inspection rather than automatically risking a second billable job. Monitoring times out after 90 minutes by default; a later invocation can resume a submitted job. On failure the controller reports the error and leaves the GPU available for diagnosis; check its state before leaving it idle. On success it downloads results before invoking `brev stop` when requested. No cloud instances are created by this controller.
+
+If the worker reports that `ensurepip` is unavailable, install its matching virtual-environment package remotely before submitting. For the observed Python 3.12 Ubuntu worker:
+
+```bash
+brev exec YOUR_INSTANCE "sudo apt-get update && sudo apt-get install -y --no-install-recommends python3.12-venv"
+```
+
+### Manual commands
+
 No PyTorch, CUDA or GPU is needed on the local PC for these commands. Use standard Python and the Brev CLI:
 
 ```bash
