@@ -13,4 +13,8 @@ artifacts/
 *.pt
 *.pth
 *.onnx
-
+*.sqlite3
+staticfiles/
+output/
+*.log
+.venv-*/

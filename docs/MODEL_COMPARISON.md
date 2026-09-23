@@ -45,3 +45,4 @@ python scripts/benchmark_models.py --dataset PATH/training.csv --baseline PATH/c
 ```
 
 The output folder must not already exist. protocol.json records the fixed candidate list, versions, dataset hash and selection rules. All candidate artifacts, January predictions and detailed scores are retained locally.
+

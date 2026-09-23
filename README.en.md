@@ -1,3 +1,5 @@
+> The complete integrated application is now available: [setup and verification](docs/PRE_FINAL.en.md). This document covers the model and training details.
+
 # Wind-power forecasting: integration and operations
 
 [Русская версия](README.ru.md) · [Training toolkit](training_toolkit/README.en.md) · [Exact API contract](docs/ML_SERVICE_CONTRACT.md)
@@ -18,7 +20,7 @@ The artifact supports **both turbine IDs** and **JMA GSM** weather. Predictions 
 - `alignment_confirmed` is **false**. Startup requires `--allow-provisional` or `ALLOW_PROVISIONAL_MODEL=1`. The response preserves this flag.
 - Provider fixed-offset archives do not establish the precise forecast issue/publication time required for a fully auditable competition replay.
 - Supplied measurements end January 31, 2026. February labels were not supplied; no February accuracy result is claimed.
-- Actual teammate Django integration still needs a joint test. Docker build/run could not be verified because no Docker engine was available. Executed release checks are recorded in [`reports/release_verification.json`](reports/release_verification.json).
+- The pre-final integration passed real Django-to-model HTTP tests for both turbine locations; see `reports/pre-final-live.json`. Docker build/run could not be verified because no Docker engine was available. Executed release checks are recorded in [`reports/release_verification.json`](reports/release_verification.json).
 
 ## 2. Repository map
 
@@ -114,17 +116,7 @@ For other machines/container networks, start with `--host 0.0.0.0 --port 8000`, 
 
 ### Docker Compose
 
-```bash
-docker compose up --build -d
-docker compose logs -f windpower-ml
-python inference/smoke_test.py --url http://127.0.0.1:8001
-# Stop and remove this service container:
-docker compose down
-```
-
-The image includes selected weights and runtime dependencies, runs as a non-root user, and performs no training. Compose maps host loopback port 8001 to container port 8000, explicitly allows the provisional artifact, passes `ML_SERVICE_TOKEN` from the environment/Compose `.env`, and includes a health check. `.dockerignore` excludes raw data, local job bundles and secrets.
-
-If Django shares the same Compose network, use `http://windpower-ml:8000/v1/predict`. If Django runs directly on this host, use `http://127.0.0.1:8001/v1/predict`. Localhost inside Django's container refers to that container itself. Adapt the network address accordingly. The container configuration has not been verified against a running Docker engine here.
+Compose now starts both Django and ML, with a private model network and web at localhost:18080. Follow the [integrated startup guide](docs/PRE_FINAL.en.md), including configuration generation and account creation. No host ML port is exposed. Compose validation passed; Docker build/run remains unverified because the local engine was unavailable.
 
 ## 5. Request flow and ownership
 

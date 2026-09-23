@@ -1,0 +1,25 @@
+{
+  "date": "2026-09-23",
+  "source_commits": {
+    "feature/wind-power-baseline": "e3455465897a6e9ef84b7963404cf4b5ae0dcba6",
+    "yevgeniy": "d34ac600506a974bdf1e71b72e672fe89cacd96a"
+  },
+  "model_version": "mlp-76540e5972a6",
+  "model_sha256": "997066f7ddaeedbb6db840e2edfbaae947da487146b76949f076d1504b8ea55d",
+  "model_weights_changed": false,
+  "pytest": {"passed": 93, "subtests_passed": 31, "warnings": 2},
+  "pip_check": "passed: no broken requirements",
+  "django_check": "passed: no issues",
+  "django_migration_check": "passed: no changes detected",
+  "compose_config_validation": "passed",
+  "docker_build_and_run": "not run: local Docker Engine unavailable",
+  "real_http_live_test": "passed; see pre-final-live.json",
+  "verification_environment": "Separate Windows Python environment; CPU Torch for training tests loaded read-only from existing environment",
+  "remaining_limits": [
+    "Measurement interval alignment remains provisional",
+    "Fixed-lead archive does not prove exact issue-time availability",
+    "Integration test does not measure forecast accuracy",
+    "No always-running refresh scheduler is configured",
+    "Container runtime remains to be verified on a running Docker Engine"
+  ]
+}

@@ -1,3 +1,7 @@
+## Pre-final integration — 2026-09-23
+
+Django and the committed joint model pass real live HTTP checks for both coordinates. Combined suite: 93 tests and 31 subtests passed; dependency/system/migration checks and Compose configuration passed. Docker engine unavailable, so container execution is not yet verified. See [integration guide](PRE_FINAL.en.md) and [report](../reports/pre-final-verification.json). The earlier status below is historical.
+
 # Implementation status
 
 The branch contains reproducible archive download, explicit-timezone dataset assembly, a PyTorch MLP training module, portable NumPy inference, weather-provider HTTP integration, and a local NVIDIA Brev job controller.

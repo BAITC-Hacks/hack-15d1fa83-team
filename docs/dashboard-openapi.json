@@ -1,0 +1,460 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "ARYS Django and external ML contract",
+    "version": "2.0.0",
+    "description": "/api/* paths belong to Django; /v1/* paths belong to external ML_SERVICE_URL, not Django."
+  },
+  "paths": {
+    "/v1/predict": {
+      "post": {
+        "summary": "External ML; optional shared token if configured",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MLInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Exactly 48 matching predictions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MLOutput"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token mismatch"
+          },
+          "422": {
+            "description": "Invalid request, unsupported turbine or weather source"
+          }
+        }
+      }
+    },
+    "/v1/metadata": {
+      "get": {
+        "summary": "External loaded artifact capabilities; exact upstream shape to confirm",
+        "responses": {
+          "200": {
+            "description": "Model version, supported turbines, weather source and field definitions"
+          }
+        }
+      }
+    },
+    "/api/v1/forecasts/": {
+      "post": {
+        "summary": "Django live/replay request",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ForecastRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Weather snapshot (weather endpoint)"
+          },
+          "201": {
+            "description": "Stored power forecast (forecasts endpoint)"
+          },
+          "401": {
+            "description": "Auth failed"
+          },
+          "422": {
+            "description": "Invalid request/capability"
+          },
+          "502": {
+            "description": "Upstream/contract error"
+          },
+          "504": {
+            "description": "Upstream timeout"
+          }
+        }
+      },
+      "get": {
+        "summary": "Last 100 runs including failures",
+        "responses": {
+          "200": {
+            "description": "Forecast summaries"
+          }
+        }
+      }
+    },
+    "/api/v1/weather/forecast/": {
+      "post": {
+        "summary": "Django live/replay request",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ForecastRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Weather snapshot (weather endpoint)"
+          },
+          "201": {
+            "description": "Stored power forecast (forecasts endpoint)"
+          },
+          "401": {
+            "description": "Auth failed"
+          },
+          "422": {
+            "description": "Invalid request/capability"
+          },
+          "502": {
+            "description": "Upstream/contract error"
+          },
+          "504": {
+            "description": "Upstream timeout"
+          }
+        }
+      }
+    },
+    "/api/v1/health/": {
+      "get": {
+        "summary": "Django health, not ML readiness",
+        "responses": {
+          "200": {
+            "description": "Django health, not ML readiness"
+          }
+        }
+      }
+    },
+    "/api/v1/turbines/": {
+      "get": {
+        "summary": "Configured turbines",
+        "responses": {
+          "200": {
+            "description": "Configured turbines"
+          }
+        }
+      }
+    },
+    "/api/v1/ml/metadata/": {
+      "get": {
+        "summary": "Normalized ML capabilities",
+        "responses": {
+          "200": {
+            "description": "Normalized ML capabilities"
+          }
+        }
+      }
+    },
+    "/api/v1/forecasts/{id}/": {
+      "get": {
+        "summary": "Stored forecast, alignment, weather and errors",
+        "responses": {
+          "200": {
+            "description": "Stored forecast, alignment, weather and errors"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/forecasts/{id}/ml-input/": {
+      "get": {
+        "summary": "Exact external ML input; legacy snapshot rejected",
+        "responses": {
+          "200": {
+            "description": "Exact external ML input; legacy snapshot rejected"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/forecasts/{id}/export.csv": {
+      "get": {
+        "summary": "All 48 records with alignment/model version",
+        "responses": {
+          "200": {
+            "description": "All 48 records with alignment/model version"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/weather/snapshots/{id}/": {
+      "get": {
+        "summary": "Immutable weather snapshot",
+        "responses": {
+          "200": {
+            "description": "Immutable weather snapshot"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/forecasts/{id}/refresh/": {
+      "post": {
+        "summary": "Refetch weather; live chooses new now; cache checks artifact version",
+        "responses": {
+          "201": {
+            "description": "New run"
+          },
+          "422": {
+            "description": "Request/capability failure"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/weather/import/": {
+      "post": {
+        "summary": "Import verified JMA archive: explicit heights, issued_at/available_at and 48–384 records. See WEATHER_ARCHIVE.md",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Already exists"
+          },
+          "201": {
+            "description": "Imported"
+          },
+          "422": {
+            "description": "Invalid archive"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "MLInput": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "https://arys.example/schemas/ml-input.json",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schema_version",
+          "turbine_id",
+          "weather_model",
+          "records"
+        ],
+        "properties": {
+          "schema_version": {
+            "const": "windpower.input.v1"
+          },
+          "turbine_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "weather_model": {
+            "const": "jma_gsm"
+          },
+          "records": {
+            "type": "array",
+            "minItems": 48,
+            "maxItems": 48,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "target_time",
+                "wind_speed_10m_ms",
+                "wind_direction_10m_deg",
+                "temperature_2m_c"
+              ],
+              "properties": {
+                "target_time": {
+                  "type": "string",
+                  "format": "date-time",
+                  "description": "Timezone-aware consecutive whole hours; UTC Z preferred."
+                },
+                "wind_speed_10m_ms": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "wind_direction_10m_deg": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 360
+                },
+                "temperature_2m_c": {
+                  "type": "number",
+                  "minimum": -273.15
+                }
+              }
+            }
+          }
+        }
+      },
+      "MLOutput": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "https://arys.example/schemas/ml-output.json",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schema_version",
+          "turbine_id",
+          "weather_model",
+          "model_version",
+          "alignment_confirmed",
+          "records"
+        ],
+        "properties": {
+          "schema_version": {
+            "const": "windpower.output.v1"
+          },
+          "turbine_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "weather_model": {
+            "const": "jma_gsm"
+          },
+          "model_version": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "alignment_confirmed": {
+            "type": "boolean"
+          },
+          "records": {
+            "type": "array",
+            "minItems": 48,
+            "maxItems": 48,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "target_time",
+                "predicted_normalized_power"
+              ],
+              "properties": {
+                "target_time": {
+                  "type": "string",
+                  "format": "date-time",
+                  "description": "Timezone-aware consecutive whole hours; UTC Z preferred."
+                },
+                "predicted_normalized_power": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              }
+            }
+          }
+        }
+      },
+      "ForecastRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "turbine_id"
+        ],
+        "properties": {
+          "turbine_id": {
+            "type": "string"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "live",
+              "replay"
+            ],
+            "default": "live"
+          },
+          "as_of": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "start_time": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "provider": {
+            "type": "string",
+            "enum": [
+              "open_meteo",
+              "archive",
+              "demo"
+            ]
+          },
+          "weather_model": {
+            "const": "jma_gsm"
+          }
+        },
+        "description": "Live forbids as_of/start_time; replay requires both. No issue times. See ML_INTEGRATION.md."
+      }
+    },
+    "securitySchemes": {
+      "Bearer": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  }
+}

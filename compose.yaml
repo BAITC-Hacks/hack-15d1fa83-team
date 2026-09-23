@@ -1,16 +1,49 @@
+name: windpower-pre-final
 services:
   windpower-ml:
     build: .
-    ports:
-      - "127.0.0.1:8001:8000"
+    expose:
+      - "8000"
     environment:
       MODEL_PATH: /model/model.json
       # Explicitly opt into the documented provisional timestamp alignment.
       ALLOW_PROVISIONAL_MODEL: "1"
-      ML_SERVICE_TOKEN: ${ML_SERVICE_TOKEN:-}
+      ML_SERVICE_TOKEN: ${ML_SERVICE_TOKEN:?Run python deployment/configure.py first}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 10s
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    ports:
+      - "127.0.0.1:${WEB_PORT:-18080}:8000"
+    environment:
+      DJANGO_DEBUG: "0"
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?Run python deployment/configure.py first}
+      DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1
+      # Loopback HTTP profile. Enable redirects and secure cookies behind HTTPS.
+      DJANGO_SECURE_SSL_REDIRECT: "0"
+      DJANGO_SECURE_COOKIES: "0"
+      DJANGO_DB_PATH: /data/db.sqlite3
+      API_TOKEN: ${API_TOKEN:?Run python deployment/configure.py first}
+      ML_BACKEND: http
+      ML_SERVICE_URL: http://windpower-ml:8000/v1/predict
+      ML_SERVICE_TOKEN: ${ML_SERVICE_TOKEN:?Run python deployment/configure.py first}
+      HTTP_TIMEOUT: "30"
+    volumes:
+      - dashboard-data:/data
+    depends_on:
+      windpower-ml:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "deployment/health_web.py"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+volumes:
+  dashboard-data:

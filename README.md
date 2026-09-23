@@ -1,4 +1,20 @@
-# Wind-power ML / Прогноз мощности ВЭС
+# ARYS / Wind Intelligence — pre-final
+
+**Complete application / Вся система:** [English setup](docs/PRE_FINAL.en.md) · [Запуск на русском](docs/PRE_FINAL.ru.md)
+
+Django dashboard + JMA GSM weather + the trained model are integrated. Real HTTP forecasts, database persistence and CSV exports passed for both turbine locations. / Django-портал, погода JMA GSM и обученная модель объединены. Реальный HTTP-цикл, сохранение в БД и CSV проверены для обеих точек.
+
+With Python 3.12+ and Docker Engine running, from this checkout / Из корня этой ветки с Python 3.12+ и запущенным Docker Engine:
+
+```sh
+python deployment/configure.py
+docker compose up --build -d
+docker compose exec web python manage.py createsuperuser
+```
+
+Open / Откройте **http://localhost:18080** and log in / войдите. `configure.py` generates private secrets and refuses to overwrite an existing `.env`. / Скрипт создаёт секреты и не перезаписывает существующий `.env`.
+
+**Verification / Проверки:** 93 tests + 31 subtests; [real live HTTP results / результаты](reports/pre-final-live.json). Compose configuration validated; image build/run unverified because Docker Engine was unavailable. / Compose валиден; сборка и запуск контейнеров не проверены из-за недоступного Docker Engine.
 
 The selected model for **both turbines**, **mlp-76540e5972a6**, is committed in [models/production/](models/production/). CPU inference needs no NVIDIA credentials.
 

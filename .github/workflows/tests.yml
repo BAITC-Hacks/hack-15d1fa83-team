@@ -12,5 +12,30 @@ jobs:
           python-version: '3.12'
           cache: pip
       - run: python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
-      - run: python -m pip install -e '.[test]'
+      - run: python -m pip install -r requirements-runtime.txt -r requirements.txt -e '.[test]'
+      - run: python -m pip check
+      - run: python manage.py check
+      - run: python manage.py makemigrations --check --dry-run
       - run: pytest -q
+  containers:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python deployment/configure.py
+      - run: docker compose config --quiet
+      - run: docker compose up --build --wait --wait-timeout 120
+      - name: Verify web can discover the real model
+        run: >-
+          docker compose exec -T web python -c
+          "import os, json, urllib.request;
+          req = urllib.request.Request('http://127.0.0.1:8000/api/v1/ml/metadata/', headers={'Authorization': 'Bearer ' + os.environ['API_TOKEN']});
+          data = json.load(urllib.request.urlopen(req));
+          assert data['model_version'] == 'mlp-76540e5972a6';
+          assert set(data['supported_turbines']) == {'turbine_1', 'turbine_2'}"
+      - if: failure()
+        run: docker compose logs --tail=100
+      - if: always()
+        run: docker compose down
