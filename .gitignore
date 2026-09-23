@@ -7,3 +7,4 @@ staticfiles/
 .pytest_cache/
 output/
 *.log
+docs/source-materials/
